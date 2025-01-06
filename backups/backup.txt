@@ -1,0 +1,501 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Alert,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Dimensions,
+} from "react-native";
+import { Bar } from "react-native-progress";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+
+function SignUpScreen() {
+  const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    name: "",
+    phone: "",
+    dob: new Date(),
+    weight: "",
+    height: "",
+    sex: "",
+    allergies: "",
+    medicalConditions: "",
+    circle: "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [currentField, setCurrentField] = useState("username");
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [progress, setProgress] = useState(0);
+
+  const fields = [
+    "username",
+    "email",
+    "name",
+    "phone",
+    "dob",
+    "weight",
+    "height",
+    "sex",
+    "allergies",
+    "medicalConditions",
+    "circle",
+  ];
+
+  const fieldLabels = {
+    username: "Username",
+    email: "Email Address",
+    name: "Full Name",
+    phone: "Phone Number",
+    dob: "Date of Birth",
+    weight: "Weight (kg)",
+    height: "Height (cm)",
+    sex: "Gender",
+    allergies: "Allergies",
+    medicalConditions: "Medical Conditions",
+    circle: "Circle of Care",
+  };
+
+  const BackgroundEmojis = () => (
+    <View style={styles.backgroundEmojis} pointerEvents="none">
+      {["🥗", "🥑", "🥝", "🍎", "🥦", "🥕", "🍅"].map((emoji, index) => (
+        <Animated.Text
+          key={index}
+          style={[
+            styles.backgroundEmoji,
+            {
+              top: `${Math.random() * 100}%`, // Random top position
+              left: `${Math.random() * 100}%`, // Random left position
+              opacity: 0.6,
+              transform: [
+                {
+                  rotate: `${Math.random() * 360}deg`, // Random rotation
+                },
+              ],
+            },
+          ]}
+        >
+          {emoji}
+        </Animated.Text>
+      ))}
+    </View>
+  );
+
+  const updateFormField = useCallback((field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  }, []);
+
+  const validateField = useCallback(
+    (field) => {
+      const value = formData[field];
+      let error = "";
+
+      switch (field) {
+        case "username":
+          if (value.length < 3)
+            error = "Username must be at least 3 characters";
+          break;
+        case "email":
+          if (!/\S+@\S+\.\S+/.test(value)) error = "Please enter a valid email";
+          break;
+        case "name":
+          if (value.length < 2) error = "Please enter your full name";
+          break;
+        case "phone":
+          if (!/^\d{10}$/.test(value))
+            error = "Please enter a valid 10-digit number";
+          break;
+        case "weight":
+          if (isNaN(value) || value < 20 || value > 300)
+            error = "Please enter a valid weight (20-300 kg)";
+          break;
+        case "height":
+          if (isNaN(value) || value < 50 || value > 300)
+            error = "Please enter a valid height (50-300 cm)";
+          break;
+        case "sex":
+          if (!value) error = "Please select your gender";
+          break;
+        case "circle":
+          if (!value) error = "Please enter your circle of care";
+          break;
+      }
+
+      setErrors((prev) => ({ ...prev, [field]: error }));
+      return !error;
+    },
+    [formData]
+  );
+
+  const handleNextField = useCallback(() => {
+    if (!validateField(currentField)) return;
+
+    const currentIndex = fields.indexOf(currentField);
+    if (currentIndex === fields.length - 1) {
+      handleSignUp();
+    } else {
+      setCurrentField(fields[currentIndex + 1]);
+      setProgress((currentIndex + 1) / (fields.length - 1));
+    }
+  }, [currentField, validateField, fields]);
+
+  const handleSignUp = async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      Alert.alert(
+        "Success! 🎉",
+        "Your account has been created successfully.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      updateFormField("dob", selectedDate);
+    }
+  };
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const renderField = () => {
+    switch (currentField) {
+      case "dob":
+        return (
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.dateText}>{formatDate(formData.dob)}</Text>
+          </TouchableOpacity>
+        );
+
+      case "sex":
+        return (
+          <View style={styles.sexButtonsContainer}>
+            {["Male", "Female", "Other"].map((gender) => (
+              <TouchableOpacity
+                key={gender}
+                style={[
+                  styles.sexButton,
+                  formData.sex === gender && styles.selectedSexButton,
+                ]}
+                onPress={() => updateFormField("sex", gender)}
+              >
+                <Text
+                  style={[
+                    styles.sexButtonText,
+                    formData.sex === gender && styles.selectedSexButtonText,
+                  ]}
+                >
+                  {gender}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+
+      default:
+        return (
+          <TextInput
+            style={styles.input}
+            placeholder={`Enter your ${fieldLabels[
+              currentField
+            ].toLowerCase()}`}
+            placeholderTextColor="#999"
+            value={formData[currentField]}
+            onChangeText={(text) => updateFormField(currentField, text)}
+            keyboardType={
+              currentField === "phone" ||
+              currentField === "weight" ||
+              currentField === "height"
+                ? "numeric"
+                : currentField === "email"
+                ? "email-address"
+                : "default"
+            }
+            autoCapitalize={
+              currentField === "email" || currentField === "username"
+                ? "none"
+                : "words"
+            }
+          />
+        );
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F5F5" />
+      <BackgroundEmojis />
+      <ScrollView
+        contentContainerStyle={styles.scrollViewContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+        >
+          <Animated.View
+            style={[styles.headerContainer, { opacity: fadeAnim }]}
+          >
+            <Text style={styles.welcomeText}>Welcome! 👋</Text>
+            <Text style={styles.title}>Create Your Account</Text>
+            <Text style={styles.subtitle}>
+              Step {fields.indexOf(currentField) + 1} of {fields.length}
+            </Text>
+          </Animated.View>
+
+          <View style={styles.progressBarContainer}>
+            <Bar
+              progress={progress}
+              width={null}
+              height={8}
+              borderRadius={4}
+              color="#4CAF50"
+              unfilledColor="#E0E0E0"
+            />
+          </View>
+
+          <View style={styles.formContainer}>
+            <Text style={styles.fieldTitle}>{fieldLabels[currentField]}</Text>
+            {renderField()}
+            {errors[currentField] ? (
+              <Text style={styles.errorText}>{errors[currentField]}</Text>
+            ) : null}
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  loading && styles.submitButtonDisabled,
+                ]}
+                onPress={handleNextField}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.submitText}>
+                    {currentField === fields[fields.length - 1]
+                      ? "Complete"
+                      : "Continue"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={formData.dob}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+            />
+          )}
+        </KeyboardAvoidingView>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+  },
+
+  backgroundEmoji: {
+    position: "absolute",
+    fontSize: 40,
+    zIndex: -1,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 20,
+    minHeight: SCREEN_HEIGHT,
+  },
+  scrollViewContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 40,
+  },
+  headerContainer: {
+    marginBottom: 30,
+    alignItems: "center",
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 8,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#2E7D32",
+    textAlign: "center",
+    marginBottom: 8,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif-medium",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+  },
+  progressBarContainer: {
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  formContainer: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 16,
+    elevation: 3,
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
+    borderWidth: Platform.OS === "ios" ? 1 : 0,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  fieldTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 16,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif-medium",
+  },
+  input: {
+    width: "100%",
+    height: 56,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: "#333",
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+  },
+  dateText: {
+    fontSize: 16,
+    color: "#333",
+    paddingVertical: 16,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+  },
+  errorText: {
+    color: "#D32F2F",
+    fontSize: 14,
+    marginTop: 8,
+    marginLeft: 4,
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif",
+  },
+  sexButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sexButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: "#F8F9FA",
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectedSexButton: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#4CAF50",
+  },
+  sexButtonText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif-medium",
+  },
+  selectedSexButtonText: {
+    color: "#2E7D32",
+  },
+  buttonContainer: {
+    marginTop: 24,
+    alignItems: "center",
+  },
+  submitButton: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 18,
+    borderRadius: 16,
+    width: "100%",
+    shadowColor: "#4CAF50",
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "#A5D6A7",
+  },
+  submitText: {
+    fontSize: 18,
+    color: "#FFF",
+    fontWeight: "600",
+    textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "System" : "sans-serif-medium",
+  },
+});
+
+export default SignUpScreen;
+
+mobile charge teernin njan plugin akin ippa bera ok 
