@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Text,
   View,
@@ -31,7 +31,7 @@ const initialFormState = {
   sex: "",
   allergies: "",
   medicalConditions: "",
-  circle: "",
+
 };
 
 const fieldLabels = {
@@ -45,7 +45,7 @@ const fieldLabels = {
   sex: "Gender",
   allergies: "Allergies",
   medicalConditions: "Medical Conditions",
-  circle: "Circle of Care",
+
 };
 
 const validationRules = {
@@ -60,13 +60,12 @@ const validationRules = {
     (!isNaN(v) && v >= 50 && v <= 300) ||
     "Please enter a valid height (50-300 cm)",
   sex: (v) => !!v || "Please select your gender",
-  circle: (v) => !!v || "Please enter your circle of care",
+  
 };
 
 function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
@@ -75,7 +74,8 @@ function SignUpScreen() {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [progress, setProgress] = useState(0);
 
-  const fields = Object.keys(initialFormState);
+  // Use useMemo so the fields array remains stable between renders
+  const fields = useMemo(() => Object.keys(initialFormState), []);
 
   useEffect(() => {
     const keyboardShow =
@@ -128,6 +128,26 @@ function SignUpScreen() {
     }
   };
 
+  // Define handleSignUp using useCallback and include necessary dependencies
+  const handleSignUp = useCallback(async () => {
+    try {
+      setLoading(true);
+      const isValid = fields.every((field) => validateField(field));
+      if (!isValid) throw new Error("Please fill all fields correctly.");
+
+      // Simulate an API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      Alert.alert("Success 🎉", "Your account has been created successfully!", [
+        { text: "OK" },
+      ]);
+    } catch (err) {
+      Alert.alert("Sign-Up Failed", err.message || "An unknown error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  }, [fields, validateField]);
+
+  // Now include handleSignUp in the dependencies of handleNextField
   const handleNextField = useCallback(() => {
     if (!validateField(currentField)) return;
 
@@ -141,27 +161,7 @@ function SignUpScreen() {
       setCurrentField(fields[nextIndex]);
       setProgress((nextIndex + 1) / fields.length); // Update progress accurately
     }
-  }, [currentField, validateField, fields]);
-
-  const handleSignUp = async () => {
-    try {
-      setLoading(true);
-      const isValid = fields.every((field) => validateField(field));
-      if (!isValid) throw new Error("Please fill all fields correctly.");
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert("Success 🎉", "Your account has been created successfully!", [
-        { text: "OK" },
-      ]);
-    } catch (err) {
-      Alert.alert(
-        "Sign-Up Failed",
-        err.message || "An unknown error occurred."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [currentField, validateField, fields, handleSignUp]);
 
   const renderField = () => {
     const commonProps = {
@@ -177,7 +177,7 @@ function SignUpScreen() {
         return (
           <>
             <TouchableOpacity
-              style={[styles.input, errors.dob && styles.inputError]}
+              style={[styles.input && styles.inputError]}
               onPress={handleDatePress}
             >
               <Text style={styles.dateText}>
@@ -233,6 +233,7 @@ function SignUpScreen() {
             autoCapitalize={
               ["email", "username"].includes(currentField) ? "none" : "words"
             }
+            returnKeyType={["email", "username"].includes(currentField) ? "next" : "done"}
           />
         );
     }

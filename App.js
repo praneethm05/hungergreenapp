@@ -3,26 +3,21 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import LoginScreen from "./screens/loginScreen";
 import SignupScreen from "./screens/signupScreen";
+import Dashboard from "./screens/dashboard";
+import BottomNav from "./components/BottomNav"; // Import Bottom Navigation
 
-// Create the Stack Navigator
 const Stack = createStackNavigator();
 
-// Main App Component
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        {/* Disable the navigation bar for the Login screen */}
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SignUp"
-          component={SignupScreen}
-          options={{ headerShown: false }}
-        />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {/* Screens without Bottom Navigation */}
+
+        {/* Screens with Bottom Navigation */}
+        <Stack.Screen name="Main" component={BottomNav} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="SignUp" component={SignupScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
