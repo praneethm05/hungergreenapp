@@ -4,6 +4,7 @@ import { Camera, Sun, Send, User, TrendingUp } from 'lucide-react-native';
 import { AlertBox } from '../components/alertBox';
 import { IllnessCauseCard } from '../components/IllnessBox';
 import { MealSuggestions } from '../components/MealSuggestions';
+import { RecordIllnessForm } from '../components/IllnessForm';
 
 const { width } = Dimensions.get('window');
 
@@ -114,8 +115,8 @@ export default function Dashboard() {
           <View style={styles.healthContainer}>
             {[
               { value: '3', label: 'Meals Logged', color: '#6366f1', bg: '#eef2ff' },
-              { value: '89', label: 'Hunger Score', color: '#16A34A', bg: '#f0fdf4' },
-              { value: '8', label: 'Day Streak', color: '#eab308', bg: '#fefce8' }
+              { value: '100', label: 'Hunger Score', color: '#16A34A', bg: '#f0fdf4' },
+              { value: '365', label: 'Day Streak', color: '#eab308', bg: '#fefce8' },
             ].map((item, index) => (
               <View key={index} style={[styles.healthItem, { backgroundColor: item.bg }]}>
                 <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>
@@ -130,6 +131,8 @@ export default function Dashboard() {
         <AlertBox />
 
         <MealSuggestions/>
+
+        <RecordIllnessForm />
       </ScrollView>
     </SafeAreaView>
   );
