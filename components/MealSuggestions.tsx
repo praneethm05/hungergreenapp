@@ -35,8 +35,6 @@ function MealSuggestions() {
           <View key={index} style={styles.suggestionItem}>
             <View style={[styles.iconContainer, { backgroundColor: item.bgColor }]}>
               <item.icon size={20} color={item.color} strokeWidth={2} />
-
-              
             </View>
             
             <View style={styles.textContainer}>

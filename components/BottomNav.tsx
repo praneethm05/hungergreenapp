@@ -4,11 +4,13 @@ import { NavigationContainer } from "@react-navigation/native";
 import { View, Text } from "react-native";
 import { Home, MessageSquare, PenSquare, Settings ,UserRoundPlus} from "lucide-react-native";
 import Dashboard from "../screens/dashboard";
+import SearchUsers from "../screens/SearchUsers";
+import FeedbackScreen from "../screens/FeedbackScreen";
 
 // Dummy Screens (unchanged)
 
-const MessagesScreen = () => <View><Text>Messages</Text></View>;
-const WriteScreen = () => <View><Text>Write</Text></View>;
+
+
 const SettingsScreen = () => <View><Text>Settings</Text></View>;
 
 const Tab = createBottomTabNavigator();
@@ -35,8 +37,8 @@ const BottomNav = () => {
         })}
       >
         <Tab.Screen name="Home" component={Dashboard} />
-        <Tab.Screen name="Feedback" component={MessagesScreen} />
-        <Tab.Screen name="Circle" component={WriteScreen} />
+        <Tab.Screen name="Feedback" component={FeedbackScreen} />
+        <Tab.Screen name="Circle" component={SearchUsers} />
         <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
 
