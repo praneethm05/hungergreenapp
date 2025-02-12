@@ -22,8 +22,8 @@ const BottomNav = () => {
           tabBarIcon: ({ color, size }) => {
             let IconComponent;
             if (route.name === "Home") IconComponent = Home;
-            else if (route.name === "Messages") IconComponent = MessageSquare;
-            else if (route.name === "Write") IconComponent = PenSquare;
+            else if (route.name === "Feedback") IconComponent = MessageSquare;
+            else if (route.name === "Edit") IconComponent = PenSquare;
             else if (route.name === "Settings") IconComponent = Settings;
             return <IconComponent size={size} color={color} />;
           },
@@ -35,8 +35,8 @@ const BottomNav = () => {
         })}
       >
         <Tab.Screen name="Home" component={Dashboard} />
-        <Tab.Screen name="Messages" component={MessagesScreen} />
-        <Tab.Screen name="Write" component={WriteScreen} />
+        <Tab.Screen name="Feedback" component={MessagesScreen} />
+        <Tab.Screen name="Edit" component={WriteScreen} />
         <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
 

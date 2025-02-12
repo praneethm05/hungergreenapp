@@ -22,16 +22,7 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtext}>Welcome back to</Text>
-          <Text style={styles.headerText}>HUNGER GREEN</Text>
-        </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <User size={24} color="white" strokeWidth={2} />
-        </TouchableOpacity>
-      </View>
+    
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Greeting and Meal Input */}
@@ -147,35 +138,8 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  header: {
-    backgroundColor: '#16A34A',
-    padding: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  headerSubtext: {
-    color: '#dcfce7',
-    fontSize: 14,
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  headerText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  profileButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 12,
-    borderRadius: 14,
-  },
+ 
+  
   card: {
     backgroundColor: 'white',
     padding: 20,
