@@ -2,7 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { View, Text } from "react-native";
-import { Home, MessageSquare, PenSquare, Settings } from "lucide-react-native";
+import { Home, MessageSquare, PenSquare, Settings ,UserRoundPlus} from "lucide-react-native";
 import Dashboard from "../screens/dashboard";
 
 // Dummy Screens (unchanged)
@@ -23,7 +23,7 @@ const BottomNav = () => {
             let IconComponent;
             if (route.name === "Home") IconComponent = Home;
             else if (route.name === "Feedback") IconComponent = MessageSquare;
-            else if (route.name === "Edit") IconComponent = PenSquare;
+            else if (route.name === "Circle") IconComponent = UserRoundPlus;
             else if (route.name === "Settings") IconComponent = Settings;
             return <IconComponent size={size} color={color} />;
           },
@@ -36,7 +36,7 @@ const BottomNav = () => {
       >
         <Tab.Screen name="Home" component={Dashboard} />
         <Tab.Screen name="Feedback" component={MessagesScreen} />
-        <Tab.Screen name="Edit" component={WriteScreen} />
+        <Tab.Screen name="Circle" component={WriteScreen} />
         <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
 
