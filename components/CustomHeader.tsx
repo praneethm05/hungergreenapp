@@ -2,15 +2,15 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform, StatusBar } from "react-native";
 import { User, Bell } from "lucide-react-native"; // Import Bell icon
 
-const CustomHeader = () => {
+const CustomHeader = ({navigation}) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         {/* Title Section */}
-        <View>
+        <TouchableOpacity onPress={() => navigation.navigate("Main")}>
           <Text style={styles.headerSubtext}>Welcome back to</Text>
           <Text style={styles.headerText}>HUNGER GREEN</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Notification & Profile Icons */}
         <View style={styles.iconContainer}>
@@ -18,7 +18,7 @@ const CustomHeader = () => {
             <Bell size={24} color="white" strokeWidth={2} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.profileButton}>
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("Profile")}>
             <User size={24} color="white" strokeWidth={2} />
           </TouchableOpacity>
         </View>
