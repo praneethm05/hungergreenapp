@@ -6,6 +6,7 @@ import SignupScreen from "./screens/signupScreen";
 import BottomNav from "./components/BottomNav"; // Import Bottom Navigation
 import CustomHeader from "./components/CustomHeader";
 import ProfileSettings from "./screens/ProfileManagement";
+import AllMealsScreen from "./screens/AllMealsScreen";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -19,7 +20,11 @@ export default function App() {
       >
         {/* Screens without Bottom Navigation */}
         <Stack.Screen name="Main" component={BottomNav} />
-
+        <Stack.Screen
+          name="AllMeals"
+          component={AllMealsScreen}
+          options={{ headerShown: true }}
+        />
         <Stack.Screen
           name="Login"
           component={LoginScreen}

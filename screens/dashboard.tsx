@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/Swipeable'; // Import the reanimated version
+import { useNavigation } from '@react-navigation/native';
 import {
   Camera,
   Sun,
@@ -26,6 +28,7 @@ import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 
 const Dashboard = () => {
+  const navigation = useNavigation();
   const [meal, setMeal] = useState('');
   const [hungerScore, setHungerScore] = useState(75);
   const [modalVisible, setModalVisible] = useState(false);
@@ -34,7 +37,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
 
   // Assume a static user id for demo purposes
-  const userId = "12345";
+  const userId = "1234";
 
   useEffect(() => {
     async function fetchMealHistory() {
@@ -97,9 +100,10 @@ const Dashboard = () => {
       );
       const nutritionData = await nutritionResponse.json();
 
+      // Prepare new meal entry; assume the POST API returns the unique _id
       const newMealEntry = {
         meal_name: nutritionData.meal_name,
-        meal_id: nutritionData._id, // Use _id from the API response
+        meal_id: nutritionData._id, // Note: Do not use this _id for deletion!
         user_id: userId,
         nutrition: nutritionData.nutrition_info,
         score: nutritionData.health_score,
@@ -122,7 +126,9 @@ const Dashboard = () => {
         })
       });
       const postResult = await postResponse.json();
-
+      // Set the unique _id from the logMeal API (used for deletion)
+      (newMealEntry as any)._id = postResult._id;
+      // Update meal history. The full history is maintained but the UI shows only the 6 most recent.
       setMealHistory(prev => [...prev, newMealEntry]);
       setLastMealInfo(newMealEntry);
       setModalVisible(true);
@@ -132,6 +138,30 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to delete a meal by its unique _id
+  const handleDeleteMeal = async (_id) => {
+    try {
+      await fetch(`http://192.168.1.4:5500/mealHistory/deleteMeal/${_id}`, {
+        method: "DELETE"
+      });
+      setMealHistory(prev => prev.filter(item => item._id !== _id));
+    } catch (error) {
+      console.error("Error deleting meal: ", error);
+    }
+  };
+
+  // Compute the six most recent meals (most recent first)
+  const recentMeals = mealHistory.slice(-6).reverse();
+
+  // Define a RightAction component for swipe-to-delete
+  const RightAction = (progress, dragX) => {
+    return (
+      <View style={styles.deleteAction}>
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </View>
+    );
   };
 
   return (
@@ -228,48 +258,64 @@ const Dashboard = () => {
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text style={styles.title}>Recent Meals</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              onPress={() => (navigation as any).navigate('AllMeals')}
+            >
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.mealList}>
-            {mealHistory.length > 0 ? (
-              mealHistory.map((meal, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.mealItem}
-                  onPress={() => {
-                    setLastMealInfo(meal);
-                    setModalVisible(true);
+            {recentMeals.length > 0 ? (
+              recentMeals.map((mealItem, index) => (
+                <ReanimatedSwipeable
+                  key={mealItem._id || index}
+                  containerStyle={styles.swipeable}
+                  friction={2}
+                  enableTrackpadTwoFingerGesture
+                  rightThreshold={40}
+                  renderRightActions={RightAction}
+                  onSwipeableOpen={(direction, swipeable) => {
+                    if (direction === 'right') {
+                      handleDeleteMeal(mealItem._id);
+                    }
                   }}
                 >
-                  <View style={styles.mealDetails}>
-                    <Text style={styles.mealName}>{meal.meal_name}</Text>
-                    <Text style={styles.mealTime}>
-                      {new Date(meal.time_logged).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.mealScore}>
-                    <Text
-                      style={[
-                        styles.scoreText,
-                        {
-                          color:
-                            meal.score >= 80
-                              ? '#2E664A'
-                              : meal.score >= 60
-                              ? '#5E8C7B'
-                              : '#E57373'
-                        }
-                      ]}
-                    >
-                      {meal.score}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.mealItem}
+                    onPress={() => {
+                      setLastMealInfo(mealItem);
+                      setModalVisible(true);
+                    }}
+                  >
+                    <View style={styles.mealDetails}>
+                      <Text style={styles.mealName}>{mealItem.meal_name}</Text>
+                      <Text style={styles.mealTime}>
+                        {new Date(mealItem.timestamp || mealItem.time_logged).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.mealScore}>
+                      <Text
+                        style={[
+                          styles.scoreText,
+                          {
+                            color:
+                              mealItem.score >= 80
+                                ? '#2E664A'
+                                : mealItem.score >= 60
+                                ? '#5E8C7B'
+                                : '#E57373'
+                          }
+                        ]}
+                      >
+                        {mealItem.score}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </ReanimatedSwipeable>
               ))
             ) : (
               <Text style={styles.emptyText}>
@@ -300,7 +346,7 @@ const Dashboard = () => {
         <RecordIllnessForm />
       </ScrollView>
 
-      {/* Success Modal */}
+      {/* Success Modal
       <Modal
         animationType="fade"
         transparent={true}
@@ -369,7 +415,7 @@ const Dashboard = () => {
                     <View style={styles.nutritionRow}>
                       <Text style={styles.nutritionKey}>Sugar:</Text>
                       <Text style={styles.nutritionValue2}>
-                        {lastMealInfo.nutrition.sugar}g
+                        {lastMealInfo.nutrition.sugars}g
                       </Text>
                     </View>
                     <View style={styles.nutritionRow}>
@@ -396,7 +442,7 @@ const Dashboard = () => {
             )}
           </View>
         </View>
-      </Modal>
+      </Modal> */}
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -507,10 +553,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
-  circleContainer: {
-    paddingVertical: 8,
-    flexDirection: 'row',
-  },
   circleItem: {
     alignItems: 'center',
     marginHorizontal: 8,
@@ -599,7 +641,7 @@ const styles = StyleSheet.create({
     color: '#5E8C7B',
     fontWeight: '500',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
   mealList: {
     marginTop: 8,
@@ -854,6 +896,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
+  },
+  // New styles for the reanimated swipeable
+  swipeable: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginVertical: 8,
+    marginHorizontal: 4,
+    // Add subtle shadow for iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // Elevation for Android
+    elevation: 2,
+    overflow: 'hidden', // Ensures content respects the borderRadius
+  },
+  
+  deleteAction: {
+    backgroundColor: '#F44336', // brighter, more vivid red
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  deleteActionText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 
