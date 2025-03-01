@@ -7,37 +7,43 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
   ActivityIndicator,
   Platform
 } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/Swipeable'; // Import the reanimated version
+import MealDetailsModal from '../components/MealDetailsModal';
+import ReanimatedSwipeable from 'react-native-gesture-handler/Swipeable';
 import { useNavigation } from '@react-navigation/native';
-import {
-  Camera,
-  Sun,
-  Send,
-  User,
-  TrendingUp,
-  Check,
-  X,
-  Leaf
-} from 'lucide-react-native';
+import { Camera, Sun, Send, User, TrendingUp } from 'lucide-react-native';
 import { IllnessCauseCard } from '../components/IllnessBox';
 import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 
 const Dashboard = () => {
-  const navigation = useNavigation();
-  const [meal, setMeal] = useState('');
-  const [hungerScore, setHungerScore] = useState(75);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [lastMealInfo, setLastMealInfo] = useState(null);
-  const [mealHistory, setMealHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation<any>();
+  const [meal, setMeal] = useState<string>('');
+  const [hungerScore, setHungerScore] = useState<number>(75);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [lastMealInfo, setLastMealInfo] = useState<any>(null);
+  const [mealHistory, setMealHistory] = useState<any[]>([]);
+  const [userName, setUserName] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [suggestion, setSuggestion] = useState<any>(null);
 
   // Assume a static user id for demo purposes
-  const userId = "1234";
+  const userId: string = "4d28d6fb-d7ba-43b3-b7fa-13ed49063fb3";
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch(`http://192.168.1.4:5500/users/${userId}`);
+        const data = await response.json();
+        setUserName(data.name);
+      } catch (error) {
+        console.error("Error fetching user data: ", error);
+      }
+    }
+    fetchUser();
+  }, [userId]);
 
   useEffect(() => {
     async function fetchMealHistory() {
@@ -50,7 +56,7 @@ const Dashboard = () => {
       }
     }
     fetchMealHistory();
-  }, []);
+  }, [userId]);
 
   // Enrich meal history if nutrition info is missing
   useEffect(() => {
@@ -83,13 +89,44 @@ const Dashboard = () => {
     }
   }, [mealHistory.length]);
 
-  const getGreeting = () => {
+  // Helper function to refresh suggestion from the API
+  const refreshSuggestion = async () => {
+    try {
+      const response = await fetch(`http://192.168.1.4:5500/suggestions/${userId}`);
+      const data = await response.json();
+      setSuggestion(data);
+    } catch (error) {
+      console.error("Error fetching suggestion: ", error);
+    }
+  };
+
+  // Fetch suggestion on mount
+  useEffect(() => {
+    refreshSuggestion();
+  }, [userId]);
+
+  // Helper function to calculate updated time string using getTime()
+  const getUpdatedTime = (createdAt: string): string => {
+    const created = new Date(createdAt);
+    const diffMs = new Date().getTime() - created.getTime();
+    const diffMinutes = diffMs / (1000 * 60);
+    if (diffMinutes < 60) {
+      return `Updated ${Math.floor(diffMinutes)} minutes ago`;
+    }
+    const diffHours = diffMinutes / 60;
+    if (diffHours < 24) {
+      return `Updated ${Math.floor(diffHours)} hours ago`;
+    }
+    const diffDays = diffHours / 24;
+    return `Updated ${Math.floor(diffDays)} days ago`;
+  };
+
+  const getGreeting = (): string => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
-
   const handleMealSubmit = async () => {
     if (!meal.trim()) return;
     setLoading(true);
@@ -99,49 +136,45 @@ const Dashboard = () => {
         `http://192.168.1.4:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
       );
       const nutritionData = await nutritionResponse.json();
-
+  
       // Prepare new meal entry; assume the POST API returns the unique _id
       const newMealEntry = {
         meal_name: nutritionData.meal_name,
-        meal_id: nutritionData._id, // Note: Do not use this _id for deletion!
+        meal_id: nutritionData._id,
         user_id: userId,
         nutrition: nutritionData.nutrition_info,
         score: nutritionData.health_score,
         feedback: nutritionData.feedback,
         timestamp: new Date().toISOString()
       };
-
+  
       // Log the meal via POST API
       const postResponse = await fetch("http://192.168.1.4:5500/mealHistory/logMeal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meal_name: newMealEntry.meal_name,
-          meal_id: newMealEntry.meal_id,
-          user_id: newMealEntry.user_id,
-          nutrition: newMealEntry.nutrition,
-          score: newMealEntry.score,
-          feedback: newMealEntry.feedback,
-          timestamp: newMealEntry.timestamp
-        })
+        body: JSON.stringify(newMealEntry)
       });
       const postResult = await postResponse.json();
-      // Set the unique _id from the logMeal API (used for deletion)
       (newMealEntry as any)._id = postResult._id;
-      // Update meal history. The full history is maintained but the UI shows only the 6 most recent.
+      // Update meal history (UI shows only the 6 most recent)
       setMealHistory(prev => [...prev, newMealEntry]);
       setLastMealInfo(newMealEntry);
       setModalVisible(true);
       setMeal('');
+  
+      // Check the suggestion's age using the full date
+    
+        await refreshSuggestion();
+  
     } catch (error) {
       console.error("Error logging meal: ", error);
     } finally {
       setLoading(false);
     }
   };
+  
 
-  // Function to delete a meal by its unique _id
-  const handleDeleteMeal = async (_id) => {
+  const handleDeleteMeal = async (_id: string) => {
     try {
       await fetch(`http://192.168.1.4:5500/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
@@ -152,17 +185,13 @@ const Dashboard = () => {
     }
   };
 
-  // Compute the six most recent meals (most recent first)
   const recentMeals = mealHistory.slice(-6).reverse();
 
-  // Define a RightAction component for swipe-to-delete
-  const RightAction = (progress, dragX) => {
-    return (
-      <View style={styles.deleteAction}>
-        <Text style={styles.deleteActionText}>Delete</Text>
-      </View>
-    );
-  };
+  const RightAction = (progress: any, dragX: any) => (
+    <View style={styles.deleteAction}>
+      <Text style={styles.deleteActionText}>Delete</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -172,7 +201,7 @@ const Dashboard = () => {
           <View style={styles.greetingContainer}>
             <View>
               <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.name}>Adithyan RK</Text>
+              <Text style={styles.name}>{userName}</Text>
             </View>
             <Sun size={32} color="#2E664A" strokeWidth={2} />
           </View>
@@ -251,7 +280,6 @@ const Dashboard = () => {
           </View>
         </View>
 
-        {/* Illness Cause */}
         <IllnessCauseCard foodItem="Chicken" date="2022-01-01" illnessName="Stomach Ache" />
 
         {/* Recent Meals */}
@@ -325,124 +353,36 @@ const Dashboard = () => {
           </View>
         </View>
 
-        {/* Nutrition Tips */}
+        {/* Nutrition Tips Section */}
         <View style={styles.card}>
           <Text style={styles.title}>Nutrition Tips</Text>
           <Text style={styles.subtitle}>Based on your recent meals</Text>
-          <View style={styles.tipContainer}>
-            <View style={styles.tipIconContainer}>
-              <Leaf size={20} color="#FFFFFF" strokeWidth={2.5} />
+          {suggestion ? (
+            <View style={styles.tipCard}>
+              <View style={styles.tipTextContainer}>
+                <Text style={styles.tipTitle}>{suggestion.suggestion_title}</Text>
+                <Text style={styles.tipMessage}>{suggestion.message}</Text>
+                {suggestion.createdAt && (
+                  <Text style={styles.tipUpdate}>
+                    {getUpdatedTime(suggestion.createdAt)}
+                  </Text>
+                )}
+              </View>
             </View>
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Increase fiber intake</Text>
-              <Text style={styles.tipDescription}>
-                Try adding more whole grains, fruits, and vegetables to your meals for better digestion.
-              </Text>
-            </View>
-          </View>
+          ) : (
+            <ActivityIndicator size="small" color="#2E664A" />
+          )}
         </View>
 
         <AlertBox />
         <RecordIllnessForm />
       </ScrollView>
 
-      {/* Success Modal
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.successIconContainer}>
-                <Check size={24} color="white" />
-              </View>
-              <Text style={styles.modalTitle}>Meal Details</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <X size={20} color="#5E8C7B" />
-              </TouchableOpacity>
-            </View>
-            {lastMealInfo && (
-              <View style={styles.modalBody}>
-                <Text style={styles.mealNameLarge}>{lastMealInfo.meal_name}</Text>
-                <View style={styles.scoreContainer}>
-                  <Text style={styles.scoreLabel}>Hunger Score</Text>
-                  <View style={styles.scoreCircle}>
-                    <Text style={styles.scoreValue}>{lastMealInfo.score}</Text>
-                  </View>
-                  <Text style={styles.scoreFeedback}>{lastMealInfo.feedback}</Text>
-                </View>
-                <View style={styles.nutritionContainer}>
-                  <Text style={styles.nutritionTitle}>Nutritional Information</Text>
-                  <View style={styles.nutritionGrid}>
-                    <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>
-                        {lastMealInfo.nutrition.calories}
-                      </Text>
-                      <Text style={styles.nutritionLabel}>Calories</Text>
-                    </View>
-                    <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>
-                        {lastMealInfo.nutrition.proteins}g
-                      </Text>
-                      <Text style={styles.nutritionLabel}>Protein</Text>
-                    </View>
-                    <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>
-                        {lastMealInfo.nutrition.carbohydrates}g
-                      </Text>
-                      <Text style={styles.nutritionLabel}>Carbs</Text>
-                    </View>
-                    <View style={styles.nutritionItem}>
-                      <Text style={styles.nutritionValue}>
-                        {lastMealInfo.nutrition.fats}g
-                      </Text>
-                      <Text style={styles.nutritionLabel}>Fats</Text>
-                    </View>
-                  </View>
-                  <View style={styles.additionalNutrition}>
-                    <View style={styles.nutritionRow}>
-                      <Text style={styles.nutritionKey}>Fiber:</Text>
-                      <Text style={styles.nutritionValue2}>
-                        {lastMealInfo.nutrition.fiber}g
-                      </Text>
-                    </View>
-                    <View style={styles.nutritionRow}>
-                      <Text style={styles.nutritionKey}>Sugar:</Text>
-                      <Text style={styles.nutritionValue2}>
-                        {lastMealInfo.nutrition.sugars}g
-                      </Text>
-                    </View>
-                    <View style={styles.nutritionRow}>
-                      <Text style={styles.nutritionKey}>Sodium:</Text>
-                      <Text style={styles.nutritionValue2}>
-                        {lastMealInfo.nutrition.sodium}mg
-                      </Text>
-                    </View>
-                    <View style={styles.nutritionRow}>
-                      <Text style={styles.nutritionKey}>Cholesterol:</Text>
-                      <Text style={styles.nutritionValue2}>
-                        {lastMealInfo.nutrition.cholesterol}mg
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.closeModalButton}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.closeModalButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal> */}
+      <MealDetailsModal
+        modalVisible={modalVisible}
+        setModalVisible={setModalVisible}
+        lastMealInfo={lastMealInfo}
+      />
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -689,202 +629,40 @@ const styles = StyleSheet.create({
     padding: 16,
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
-  tipContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EFF5F1',
+  // Redesigned Nutrition Tips Card Styles (without icon)
+  tipCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
-    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  tipIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2E664A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  tipContent: {
+  tipTextContainer: {
     flex: 1,
   },
   tipTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#2E664A',
     marginBottom: 4,
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
-  tipDescription: {
+  tipMessage: {
     fontSize: 14,
     color: '#5E8C7B',
     lineHeight: 20,
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#EFF5F1',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  successIconContainer: {
-    backgroundColor: '#2E664A',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2E664A',
-    flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
-  },
-  closeButton: { padding: 6 },
-  modalBody: { padding: 20 },
-  mealNameLarge: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2E664A',
-    marginBottom: 16,
-    textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
-  },
-  scoreContainer: { alignItems: 'center', marginBottom: 24 },
-  scoreLabel: {
-    fontSize: 14,
-    color: '#5E8C7B',
-    fontWeight: '600',
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-  scoreCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#EFF5F1',
-    borderWidth: 3,
-    borderColor: '#2E664A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  scoreValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2E664A',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
-  },
-  scoreFeedback: {
-    fontSize: 14,
-    color: '#5E8C7B',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-    textAlign: 'center',
-  },
-  nutritionContainer: {
-    backgroundColor: '#F6F9F7',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  nutritionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2E664A',
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
-  },
-  nutritionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  nutritionItem: {
-    width: '48%',
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  nutritionValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2E664A',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
-  },
-  nutritionLabel: {
+  tipUpdate: {
+    marginTop: 8,
     fontSize: 12,
-    color: '#5E8C7B',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-  additionalNutrition: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-  },
-  nutritionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  nutritionKey: {
-    fontSize: 14,
-    color: '#5E8C7B',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif',
-  },
-  nutritionValue2: {
-    fontSize: 14,
-    color: '#2E664A',
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
-  },
-  closeModalButton: {
-    backgroundColor: '#2E664A',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  closeModalButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -897,24 +675,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 999,
   },
-  // New styles for the reanimated swipeable
   swipeable: {
     backgroundColor: '#fff',
     borderRadius: 16,
     marginVertical: 8,
     marginHorizontal: 4,
-    // Add subtle shadow for iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    // Elevation for Android
     elevation: 2,
-    overflow: 'hidden', // Ensures content respects the borderRadius
+    overflow: 'hidden',
   },
-  
   deleteAction: {
-    backgroundColor: '#F44336', // brighter, more vivid red
+    backgroundColor: '#F44336',
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
