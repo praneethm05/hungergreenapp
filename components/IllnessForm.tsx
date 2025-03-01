@@ -1,4 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { 
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Platform 
+} from 'react-native';
 import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ChevronDown, Calendar, AlertCircle } from 'lucide-react-native';
@@ -116,6 +118,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -136,8 +140,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
-    letterSpacing: -0.5,
+    color: '#2E664A',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
   chevron: {
     transform: [{ rotate: '0deg' }],
@@ -148,15 +153,17 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 20,
     paddingTop: 0,
-    gap: 16,
   },
   inputContainer: {
-    gap: 8,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
     color: '#64748b',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -164,6 +171,7 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 15,
     color: '#0f172a',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
   dateInput: {
     backgroundColor: '#f8fafc',
@@ -176,14 +184,18 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 15,
     color: '#0f172a',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
   errorText: {
     color: '#dc2626',
     fontSize: 14,
     fontWeight: '500',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+    marginBottom: 8,
   },
   submitButton: {
-    backgroundColor: '#16A34A',
+    backgroundColor: '#2E664A', // Updated to darker primary green
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -193,6 +205,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
 });
 

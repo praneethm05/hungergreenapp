@@ -1,14 +1,17 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 
 function IllnessCauseCard({ foodItem, date, illnessName = "illness_name" }) {
   return (
     <View style={styles.card}>
       <View style={styles.headerContainer}>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerSubtitle}>Possible Cause For</Text>
+          <Text style={styles.headerTitle}>{illnessName}</Text>
+        </View>
         <View style={styles.iconContainer}>
           <AlertTriangle size={20} color="#991b1b" strokeWidth={2} />
         </View>
-        <Text style={styles.headerText}>Possible Cause For {illnessName}</Text>
       </View>
 
       <View style={styles.contentContainer}>
@@ -34,32 +37,45 @@ function IllnessCauseCard({ foodItem, date, illnessName = "illness_name" }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
   },
   headerContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
     marginBottom: 16,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#2E664A',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2E664A',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
+    marginTop: 2,
   },
   iconContainer: {
     backgroundColor: '#fee2e2',
     padding: 8,
     borderRadius: 12,
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-    letterSpacing: -0.5,
+    marginLeft: 12,
+    alignSelf: 'center',
   },
   contentContainer: {
     marginBottom: 12,
@@ -70,6 +86,8 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   itemContainer: {
     flex: 1,
@@ -85,17 +103,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
   value: {
     fontSize: 16,
     color: '#0f172a',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
   },
   disclaimerText: {
     fontSize: 13,
     color: '#94a3b8',
     fontWeight: '500',
     textAlign: 'center',
+    marginTop: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
 });
 

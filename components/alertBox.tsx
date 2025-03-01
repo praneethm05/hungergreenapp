@@ -1,7 +1,7 @@
 import { 
-    View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, 
-    ScrollView, Dimensions
-  } from 'react-native';
+  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, 
+  ScrollView, Dimensions, Platform 
+} from 'react-native';
 import { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Beef, Apple } from 'lucide-react-native';
 
@@ -116,7 +116,7 @@ function AlertBox() {
                 styles.alertBox,
                 { 
                   backgroundColor: alert.backgroundColor,
-                  width: ALERT_WIDTH - (2 * CARD_PADDING), // Subtract padding to ensure proper width
+                  width: ALERT_WIDTH - (2 * CARD_PADDING),
                 }
               ]}
             >
@@ -167,117 +167,124 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
-    letterSpacing: -0.5
+    color: '#2E664A',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-medium",
   },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: CARD_PADDING,
-    elevation: 2,
+    marginBottom: 20, // Added marginBottom to separate cards
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
   },
   alertBox: {
     padding: 20,
     borderRadius: 16,
-    marginRight: CARD_PADDING*2, // Add horizontal margin to center the card
+    marginRight: CARD_PADDING * 2,
   },
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8
+    marginBottom: 8,
   },
   alertTitle: {
     fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.5
+    letterSpacing: 1,
+    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-medium",
   },
   alertText: {
     marginBottom: 20,
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 22,
+    fontFamily: Platform.OS === "ios" ? "Avenir-Book" : "sans-serif-light",
   },
   fiberContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16
+    marginBottom: 16,
   },
   fiberBox: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    flex: 1
+    flex: 1,
   },
   fiberLabel: {
     fontSize: 12,
     color: '#374151',
     fontWeight: '600',
     marginBottom: 4,
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
   fiberValue: {
     fontSize: 20,
-    fontWeight: '700'
+    fontWeight: '700',
+    fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-medium",
   },
   alertsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 20,
   },
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 8,
   },
   navButton: {
     padding: 8,
     backgroundColor: '#f8fafc',
-    borderRadius: 10
+    borderRadius: 10,
   },
   navButtonDisabled: {
     backgroundColor: '#f8fafc',
-    opacity: 0.5
+    opacity: 0.5,
   },
   alertCounter: {
     fontSize: 14,
     color: '#64748b',
-    fontWeight: '600'
+    fontWeight: '600',
+    fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
-    gap: 8
+    gap: 8,
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#e2e8f0'
+    backgroundColor: '#e2e8f0',
   },
   paginationDotActive: {
-    backgroundColor: '#16A34A',
-    width: 24
+    backgroundColor: '#2E664A',
+    width: 24,
   },
   progressContainer: {
     height: 4,
     backgroundColor: '#f1f5f9',
     borderRadius: 2,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#16A34A',
-    borderRadius: 2
+    backgroundColor: '#2E664A',
+    borderRadius: 2,
   },
   scrollContent: {
-    flexGrow: 0
-  }
+    flexGrow: 0,
+  },
 });
 
 export { AlertBox };
