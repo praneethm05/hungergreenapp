@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Text,
   View,
@@ -16,12 +22,14 @@ import {
   StyleSheet,
   TextInputProps,
   ReturnKeyTypeOptions,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Bar } from "react-native-progress";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSignUp } from "@clerk/clerk-expo";
 
 // Define the form data interface
 interface FormData {
@@ -86,8 +94,7 @@ const validationRules: Partial<Record<keyof FormData, (v: any) => boolean | stri
 };
 
 const Header: React.FC = () => {
-  const scaleValue = React.useRef(new Animated.Value(1)).current;
-
+  const scaleValue = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const pulseAnimation = Animated.sequence([
       Animated.timing(scaleValue, {
@@ -103,7 +110,6 @@ const Header: React.FC = () => {
     ]);
     Animated.loop(pulseAnimation).start();
   }, [scaleValue]);
-
   return (
     <View style={styles.headerContainer}>
       <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
@@ -121,30 +127,47 @@ const Header: React.FC = () => {
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { signUp } = useSignUp();
   const [loading, setLoading] = useState<boolean>(false);
   const [datePickerMode, setDatePickerMode] = useState<"date" | null>(null);
-  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [currentField, setCurrentField] = useState<keyof FormData>("username");
   const [fadeAnim] = useState(new Animated.Value(1));
   const [progress, setProgress] = useState<number>(0);
+  const [clerkStep, setClerkStep] = useState<"form" | "phoneVerification">("form");
+  const [otp, setOtp] = useState("");
+  const [clerkUserId, setClerkUserId] = useState<string | null>(null);
 
-  // Memoize the list of fields so it remains stable between renders
-  const fields = useMemo(() => Object.keys(initialFormState) as (keyof FormData)[], []);
+  // Ref for improved keyboard handling
+  const scrollViewRef = useRef<ScrollView>(null);
 
+  // Default country code; enhance if needed.
+  const DEFAULT_COUNTRY_CODE = "+91";
+  // Helper: ensure phone number is in E.164 format.
+  const getFormattedPhone = useCallback(() => {
+    return formData.phone.startsWith("+") ? formData.phone : DEFAULT_COUNTRY_CODE + formData.phone;
+  }, [formData.phone]);
+
+  // Improved keyboard handling.
   useEffect(() => {
-    const keyboardShow = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const keyboardHide = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const showSubscription = Keyboard.addListener(keyboardShow, () => setKeyboardVisible(true));
-    const hideSubscription = Keyboard.addListener(keyboardHide, () => setKeyboardVisible(false));
-
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (event) => {
+      if (Platform.OS === "ios") {
+        const keyboardHeight = event.endCoordinates.height;
+        scrollViewRef.current?.scrollTo({ y: keyboardHeight, animated: true });
+      }
+    });
+    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    });
     return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
     };
   }, []);
+
+  // Memoize fields.
+  const fields = useMemo(() => Object.keys(initialFormState) as (keyof FormData)[], []);
 
   const validateField = useCallback(
     (field: keyof FormData) => {
@@ -176,50 +199,126 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleSignUp = useCallback(async () => {
+  // Save user info to your DB (including the email).
+  const saveToDB = async (userId: string | null) => {
+    if (!userId) throw new Error("Missing Clerk user ID");
+    const payload = {
+      diet_type: "Nonvegetarian",
+      user_id: userId,
+      name: formData.name,
+      username: formData.username,
+      phone: getFormattedPhone(),
+      dob: formData.dob.toISOString(),
+      weight: Number(formData.weight),
+      height: Number(formData.height),
+      sex: formData.sex,
+      allergies: formData.allergies ? formData.allergies.split(",").map((a) => a.trim()) : [],
+      medical_conditions: formData.medicalConditions
+        ? formData.medicalConditions.split(",").map((c) => c.trim())
+        : [],
+      profile_picture: "https://via.placeholder.com/100",
+      circle: [],
+      email: formData.email,
+    };
+    const response = await fetch("http://192.168.1.6:5500/users/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to save user data to the database");
+    }
+    return response.json();
+  };
+
+  // Clerk sign‑up flow (excluding email).
+  const handleClerkSignUp = useCallback(async () => {
     try {
       setLoading(true);
-      const isValid = fields.every((field) => validateField(field));
-      if (!isValid) throw new Error("Please fill all fields correctly.");
-
-      // Simulate an API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert("Success 🎉", "Your account has been created successfully!", [
-        { text: "OK", onPress: () => navigation.navigate("Login") },
-      ]);
+      // Note: emailAddress is omitted from the Clerk create call.
+      const result = await signUp.create({
+        phoneNumber: getFormattedPhone(),
+        username: formData.username,
+        unsafeMetadata: {
+          name: formData.name,
+          dob: formData.dob.toISOString(),
+          weight: formData.weight,
+          height: formData.height,
+          sex: formData.sex,
+          allergies: formData.allergies,
+          medicalConditions: formData.medicalConditions,
+        },
+      });
+      setClerkUserId(result.createdUserId);
+      // Trigger phone verification.
+      await signUp.preparePhoneNumberVerification();
+      setClerkStep("phoneVerification");
+      Alert.alert("OTP Sent", "A 6‑digit code has been sent to your phone");
     } catch (err: any) {
-      Alert.alert("Sign-Up Failed", err.message || "An unknown error occurred.");
+      console.error("Signup error:", err);
+      Alert.alert("Sign‑Up Failed", err?.message || "An unknown error occurred during sign‑up.");
     } finally {
       setLoading(false);
     }
-  }, [fields, validateField, navigation]);
+  }, [formData, signUp, getFormattedPhone]);
 
   const handleNextField = useCallback(() => {
     if (!validateField(currentField)) return;
-
     const currentIndex = fields.indexOf(currentField);
-
     if (currentIndex === fields.length - 1) {
       setProgress(1);
-      handleSignUp();
+      handleClerkSignUp();
     } else {
       const nextIndex = currentIndex + 1;
       setCurrentField(fields[nextIndex]);
       setProgress((nextIndex + 1) / fields.length);
     }
-  }, [currentField, validateField, fields, handleSignUp]);
+  }, [currentField, fields, handleClerkSignUp, validateField]);
+
+  const handlePreviousField = useCallback(() => {
+    const currentIndex = fields.indexOf(currentField);
+    if (currentIndex > 0) {
+      setCurrentField(fields[currentIndex - 1]);
+      setProgress(currentIndex / fields.length);
+    }
+  }, [currentField, fields]);
+
+  // OTP verification using attemptPhoneNumberVerification.
+  const handleVerifyOTP = useCallback(async () => {
+    if (!otp || otp.length !== 6) {
+      Alert.alert("Invalid OTP", "Please enter a valid 6‑digit OTP");
+      return;
+    }
+    console.log("Attempting OTP verification with code:", otp);
+    try {
+      setLoading(true);
+      const verificationAttempt = await signUp.attemptPhoneNumberVerification({ code: otp });
+      console.log("Verification attempt result:", verificationAttempt);
+      if (verificationAttempt.status === "complete") {
+        await saveToDB(verificationAttempt.createdUserId || clerkUserId);
+        Alert.alert("Success 🎉", "Your account has been created successfully!", [
+          { text: "OK", onPress: () => navigation.navigate("Login") },
+        ]);
+      } else {
+        Alert.alert("Error", "OTP verification incomplete. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("OTP verification error:", err);
+      Alert.alert("Error", err?.message || "OTP verification failed.");
+    } finally {
+      setLoading(false);
+    }
+  }, [otp, clerkUserId, signUp, navigation, saveToDB]);
 
   const renderField = () => {
     const commonProps: Partial<TextInputProps> = {
       style: [styles.input, errors[currentField] && styles.inputError],
       placeholderTextColor: "#5E8C7B",
       onSubmitEditing: handleNextField,
-      // Explicitly cast the returnKeyType so TypeScript recognizes it as a valid ReturnKeyTypeOptions value.
       returnKeyType: "next" as ReturnKeyTypeOptions,
       placeholder: `Enter your ${fieldLabels[currentField].toLowerCase()}`,
       autoCapitalize: ["email", "username"].includes(currentField) ? "none" : "words",
     };
-
     switch (currentField) {
       case "dob":
         return (
@@ -228,9 +327,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               style={[styles.input, errors[currentField] && styles.inputError]}
               onPress={handleDatePress}
             >
-              <Text style={styles.dateText}>
-                {formData.dob.toLocaleDateString()}
-              </Text>
+              <Text style={styles.dateText}>{formData.dob.toLocaleDateString()}</Text>
             </TouchableOpacity>
             {datePickerMode && (
               <DateTimePicker
@@ -280,21 +377,65 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
+  // Render OTP screen (only mobile verification).
+  if (clerkStep === "phoneVerification") {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F6F9F7" />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            ref={scrollViewRef}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollViewContent}
+          >
+            <View style={styles.otpContainer}>
+              <Text >Mobile Verification</Text>
+              <Text >
+                Enter the OTP sent to {getFormattedPhone()}
+              </Text>
+              <TextInput
+                style={[styles.input,]}
+                value={otp}
+                onChangeText={(text) => {
+                  const numericText = text.replace(/[^0-9]/g, "");
+                  setOtp(numericText.slice(0, 6));
+                }}
+                keyboardType="numeric"
+                maxLength={6}
+                placeholder="Enter OTP"
+                placeholderTextColor="#5E8C7B"
+              />
+              <TouchableOpacity
+                style={[styles.verifyOtpButton, loading && styles.actionButtonDisabled]}
+                onPress={handleVerifyOTP}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.actionButtonText}>Verify OTP</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
+    );
+  }
+
+  // Render multi‑step form.
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        style={styles.keyboardAvoidingContainer}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 100}
+        style={styles.keyboardAvoidingContainer}
       >
-        <StatusBar barStyle="light-content" backgroundColor="#F6F9F7" />
-        <LinearGradient colors={["#F6F9F7", "#EFF5F1"]} style={styles.background}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollViewContainer,
-              { paddingBottom: keyboardVisible ? 150 : 20 },
-            ]}
+            ref={scrollViewRef}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.scrollViewContainer, { paddingBottom: 20 }]}
           >
             <Header />
             <View style={styles.formHeaderContainer}>
@@ -318,50 +459,61 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               <Text style={styles.fieldTitle}>{fieldLabels[currentField]}</Text>
               {renderField()}
               {errors[currentField] && <Text style={styles.errorText}>{errors[currentField]}</Text>}
-              <TouchableOpacity
-                style={[styles.actionButton, loading && styles.actionButtonDisabled]}
-                onPress={handleNextField}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.actionButtonText}>
-                    {currentField === fields[fields.length - 1] ? "Complete" : "Continue"}
-                  </Text>
+              <View style={styles.navigationButtons}>
+                {fields.indexOf(currentField) > 0 && (
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.previousButton]}
+                    onPress={handlePreviousField}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionButtonText}>Previous</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, loading && styles.actionButtonDisabled]}
+                  onPress={handleNextField}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>
+                      {currentField === fields[fields.length - 1] ? "Complete" : "Continue"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                 <Text style={styles.backButtonText}>Back to login</Text>
               </TouchableOpacity>
             </Animated.View>
+            <View style={styles.footerContainer}>
+              <Text style={styles.footerText}>
+                By continuing, you agree to our{" "}
+                <Text style={styles.linkText}>Terms</Text> and{" "}
+                <Text style={styles.linkText}>Privacy Policy</Text>
+              </Text>
+            </View>
           </ScrollView>
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>
-              By continuing, you agree to our{" "}
-              <Text style={styles.linkText}>Terms</Text> and{" "}
-              <Text style={styles.linkText}>Privacy Policy</Text>
-            </Text>
-          </View>
-        </LinearGradient>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  keyboardAvoidingContainer: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
+  keyboardAvoidingContainer: { flex: 1 },
   scrollViewContainer: {
     flexGrow: 1,
+    paddingHorizontal: 30,
+    paddingBottom: 20,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: "space-between",
+    padding: 20,
   },
   headerContainer: {
     paddingTop: Platform.OS === "android" ? 40 : 30,
@@ -382,12 +534,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
   },
-  logoIconContainer: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  logoIconContainer: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   title: {
     fontSize: 26,
     color: "#2E664A",
@@ -403,12 +550,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Avenir-Book" : "sans-serif-light",
     letterSpacing: 0.3,
   },
-  formHeaderContainer: {
-    marginTop: 10,
-    marginBottom: 20,
-    paddingHorizontal: 30,
-    alignItems: "center",
-  },
+  formHeaderContainer: { marginTop: 10, marginBottom: 20, alignItems: "center" },
   welcomeText: {
     fontSize: 28,
     color: "#2E664A",
@@ -420,16 +562,11 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 18,
     color: "#5E8C7B",
-    fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif",
     textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif",
   },
-  progressBarContainer: {
-    paddingHorizontal: 30,
-    marginBottom: 25,
-  },
-  formContainer: {
-    paddingHorizontal: 30,
-  },
+  progressBarContainer: { marginBottom: 25 },
+  formContainer: { paddingHorizontal: 30 },
   fieldTitle: {
     fontSize: 18,
     color: "#2E664A",
@@ -454,9 +591,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  inputError: {
-    borderColor: "#FF6B6B",
-  },
+  inputError: { borderColor: "#FF6B6B" },
   dateText: {
     fontSize: 17,
     color: "#333333",
@@ -482,25 +617,25 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  selectedSexButton: {
-    backgroundColor: "#2E664A",
-    borderColor: "#2E664A",
-  },
+  selectedSexButton: { backgroundColor: "#2E664A", borderColor: "#2E664A" },
   sexButtonText: {
     fontSize: 16,
     color: "#333333",
     fontWeight: "500",
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
-  selectedSexButtonText: {
-    color: "#FFFFFF",
-  },
+  selectedSexButtonText: { color: "#FFFFFF" },
   errorText: {
     color: "#FF6B6B",
     fontSize: 14,
     marginTop: -15,
     marginBottom: 15,
     fontFamily: Platform.OS === "ios" ? "Avenir-Book" : "sans-serif-light",
+  },
+  navigationButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
   actionButton: {
     backgroundColor: "#2E664A",
@@ -509,15 +644,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    flex: 1,
+    marginHorizontal: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
   },
-  actionButtonDisabled: {
-    backgroundColor: "#83A794",
+  previousButton: { backgroundColor: "#83A794" },
+  actionButtonDisabled: { backgroundColor: "#B0B0B0" },
+  verifyOtpButton: {
+    backgroundColor: "#2E664A",
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   actionButtonText: {
     color: "#FFFFFF",
@@ -526,10 +675,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
     letterSpacing: 0.3,
   },
-  backButton: {
-    paddingVertical: 12,
-    alignItems: "center",
-  },
+  backButton: { paddingVertical: 12, alignItems: "center" },
   backButtonText: {
     color: "#2E664A",
     fontSize: 16,
@@ -553,6 +699,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
+
+  
+  otpContainer: {
+    flex: 1,
+    paddingHorizontal: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F6F9F7",
+  },
+  
 });
 
 export default SignUpScreen;

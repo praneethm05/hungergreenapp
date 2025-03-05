@@ -16,7 +16,6 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-
 interface ActionButtonProps {
   onPress: (event: GestureResponderEvent) => void;
   icon?: React.ComponentProps<typeof FontAwesome>["name"];
@@ -25,7 +24,6 @@ interface ActionButtonProps {
   textColor: string;
   borderColor?: string;
 }
-
 
 const Header: React.FC = () => {
   const scaleValue = useRef(new Animated.Value(1)).current;
@@ -43,7 +41,6 @@ const Header: React.FC = () => {
         useNativeDriver: true,
       }),
     ]);
-
     Animated.loop(pulseAnimation).start();
   }, [scaleValue]);
 
@@ -79,15 +76,19 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {icon && (
-        <FontAwesome
-          name={icon}
-          size={18}
-          color={textColor}
-          style={styles.buttonIcon}
-        />
-      )}
-      <Text style={[styles.actionButtonText, { color: textColor }]}>{text}</Text>
+      <View style={styles.buttonContentContainer}>
+        {icon && (
+          <FontAwesome
+            name={icon}
+            size={18}
+            color={textColor}
+            style={styles.buttonIcon}
+          />
+        )}
+        <Text style={[styles.actionButtonText, { color: textColor }]}>
+          {text}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -99,12 +100,13 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const handleGoogleSignIn = () => {
-    console.log("Google Sign-In button pressed");
+  const handlePhoneSignIn = () => {
+    console.log("Phone Sign-In button pressed");
+    navigation.navigate("PhoneLogin");
   };
 
   const handleSignUp = () => {
-    console.log("Sign up button pressed");
+    console.log("SignUp button pressed");
     navigation.navigate("SignUp");
   };
 
@@ -134,20 +136,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
               <View style={styles.buttonsContainer}>
                 <ActionButton
-                  icon="google"
-                  text="Continue with Google"
+                  icon="phone"
+                  text="Continue with Phone"
                   backgroundColor="#FFFFFF"
                   textColor="#333333"
                   borderColor="#E0E0E0"
-                  onPress={handleGoogleSignIn}
+                  onPress={handlePhoneSignIn}
                 />
 
-                <ActionButton
-                  text="Sign up"
-                  backgroundColor="#2E664A"
-                  textColor="#FFFFFF"
-                  onPress={handleSignUp}
-                />
+                <TouchableOpacity onPress={handleSignUp} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#3E885B", "#2E664A"]}
+                    style={styles.actionButton}
+                  >
+                    <View style={styles.buttonContentContainer}>
+                      <FontAwesome
+                        name="user-plus"
+                        size={18}
+                        color="#FFFFFF"
+                        // Overriding the default margin to keep the icon and text centered
+                        style={[styles.buttonIcon, { marginRight: 8 }]}
+                      />
+                      <Text style={[styles.actionButtonText, { color: "#FFFFFF" }]}>
+                        Sign Up
+                      </Text>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -236,6 +251,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-medium",
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   welcomeMessage: {
     fontSize: 17,
@@ -254,18 +270,25 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
     width: "100%",
-    justifyContent: "center",
-    marginBottom: 18,
+    marginVertical: 8,
     borderWidth: 1,
+    borderColor: "#E0E0E0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    backgroundColor: "#FFFFFF",
+  },
+  buttonContentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center", // This centers the icon and text together
+    width: "100%",
   },
   buttonIcon: {
     marginRight: 12,

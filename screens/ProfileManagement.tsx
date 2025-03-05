@@ -1,7 +1,18 @@
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
-import { User, Bell } from 'lucide-react-native';
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  SafeAreaView 
+} from 'react-native';
+import { User } from 'lucide-react-native';
+import { useClerk } from '@clerk/clerk-react';
+import { ScrollView } from 'react-native-gesture-handler';
 
 export default function ProfileSettings() {
+  const clerk = useClerk();
+
   const profileData = {
     name: 'Adithyan RK',
     username: '@adithyanrk',
@@ -23,21 +34,29 @@ export default function ProfileSettings() {
     { title: 'Delete Account', danger: true }
   ];
 
-  const renderStars = (rating) => {
+  const renderStars = (rating: number) => {
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-   
+  const handleSignOut = async () => {
+    try {
+      await clerk.signOut();
+      // Optionally, navigate to your login screen here
+      console.log("Signed out successfully");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
+  return (
+    <ScrollView>
+      <SafeAreaView style={styles.container}>
       <View style={styles.profileCard}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <User size={32} color="#64748b" strokeWidth={2} />
           </View>
         </View>
-        
         <Text style={styles.name}>{profileData.name}</Text>
         <Text style={styles.userSince}>user since {profileData.since}</Text>
         <Text style={styles.username}>{profileData.username}</Text>
@@ -77,8 +96,16 @@ export default function ProfileSettings() {
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity 
+          style={[styles.menuItem, { backgroundColor: '#ffe5e5' }]} 
+          onPress={handleSignOut}
+        >
+          <Text style={[styles.menuText, styles.dangerText]}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
+    </ScrollView>
+    
   );
 }
 
@@ -86,10 +113,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-  },
-  header: {
-    padding: 16,
-    alignItems: 'flex-end',
   },
   profileCard: {
     backgroundColor: 'white',

@@ -9,6 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@clerk/clerk-expo": "^2.8.3",
+    "@clerk/types": "^4.47.0",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-navigation/bottom-tabs": "^7.2.0",
@@ -19,9 +21,11 @@
     "expo": "~52.0.25",
     "expo-font": "~13.0.3",
     "expo-linear-gradient": "~14.0.2",
+    "expo-secure-store": "^14.0.1",
     "expo-status-bar": "~2.0.1",
     "lucide-react-native": "^0.475.0",
     "react": "18.3.1",
+    "react-dom": "^18.3.1",
     "react-native": "^0.76.6",
     "react-native-phone-number-input": "^2.1.0",
     "react-native-progress": "^5.0.1",
