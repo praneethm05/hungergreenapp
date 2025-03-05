@@ -35,7 +35,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(`http://192.168.1.4:5500/users/${userId}`);
+        const response = await fetch(`http://192.168.1.6:5500/users/${userId}`);
         const data = await response.json();
         setUserName(data.name);
       } catch (error) {
@@ -48,7 +48,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchMealHistory() {
       try {
-        const response = await fetch(`http://192.168.1.4:5500/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.6:5500/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         setMealHistory(data);
       } catch (error) {
@@ -65,7 +65,7 @@ const Dashboard = () => {
         mealHistory.map(async (meal) => {
           if (!meal.nutrition) {
             try {
-              const response = await fetch(`http://192.168.1.4:5500/mealSearch/getMeal/${meal.meal_id}`);
+              const response = await fetch(`http://192.168.1.6:5500/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await response.json();
               return {
                 ...meal,
@@ -92,7 +92,7 @@ const Dashboard = () => {
   // Helper function to refresh suggestion from the API
   const refreshSuggestion = async () => {
     try {
-      const response = await fetch(`http://192.168.1.4:5500/suggestions/${userId}`);
+      const response = await fetch(`http://192.168.1.6:5500/suggestions/${userId}`);
       const data = await response.json();
       setSuggestion(data);
     } catch (error) {
@@ -133,7 +133,7 @@ const Dashboard = () => {
     try {
       // Fetch nutritional info for the meal
       const nutritionResponse = await fetch(
-        `http://192.168.1.4:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
+        `http://192.168.1.6:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
       );
       const nutritionData = await nutritionResponse.json();
   
@@ -149,7 +149,7 @@ const Dashboard = () => {
       };
   
       // Log the meal via POST API
-      const postResponse = await fetch("http://192.168.1.4:5500/mealHistory/logMeal", {
+      const postResponse = await fetch("http://192.168.1.6:5500/mealHistory/logMeal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newMealEntry)
@@ -176,7 +176,7 @@ const Dashboard = () => {
 
   const handleDeleteMeal = async (_id: string) => {
     try {
-      await fetch(`http://192.168.1.4:5500/mealHistory/deleteMeal/${_id}`, {
+      await fetch(`http://192.168.1.6:5500/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMealHistory(prev => prev.filter(item => item._id !== _id));

@@ -41,13 +41,13 @@ const AllMealsScreen: React.FC = () => {
   useEffect(() => {
     async function fetchMeals() {
       try {
-        const response = await fetch(`http://192.168.1.4:5500/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.6:5500/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         // Enrich each meal using the mealSearch API
         const enrichedMeals = await Promise.all(
           data.map(async (meal: any) => {
             try {
-              const res = await fetch(`http://192.168.1.4:5500/mealSearch/getMeal/${meal.meal_id}`);
+              const res = await fetch(`http://192.168.1.6:5500/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await res.json();
               return {
                 ...meal,
