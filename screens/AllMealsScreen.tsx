@@ -35,7 +35,7 @@ const AllMealsScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [lastMealInfo, setLastMealInfo] = useState<Meal | null>(null);
 
-  // Static user id for demo purposes
+  // Get the user id from Clerk
   const { user } = useUser();
   const userId = user?.id;
 
@@ -43,13 +43,13 @@ const AllMealsScreen: React.FC = () => {
   useEffect(() => {
     async function fetchMeals() {
       try {
-        const response = await fetch(`http://192.168.1.6:5500/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.2:5500/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         // Enrich each meal using the mealSearch API
         const enrichedMeals = await Promise.all(
           data.map(async (meal: any) => {
             try {
-              const res = await fetch(`http://192.168.1.6:5500/mealSearch/getMeal/${meal.meal_id}`);
+              const res = await fetch(`http://192.168.1.2:5500/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await res.json();
               return {
                 ...meal,
@@ -76,7 +76,7 @@ const AllMealsScreen: React.FC = () => {
       }
     }
     fetchMeals();
-  }, []);
+  }, [userId]);
 
   // Filter meals based on the selected option
   useEffect(() => {
@@ -108,13 +108,30 @@ const AllMealsScreen: React.FC = () => {
     }
   }, [selectedFilter, meals]);
 
+  // Function to update leaderboard data after deletion
+  const updateLeaderboard = async () => {
+    try {
+      // Call leaderboard update API
+      await fetch(`http://192.168.1.2:5500/leaderboard/update/${userId}`, {
+        method: 'POST'
+      });
+      // Optionally, you can call the leaderboard info endpoint here if you need to update UI elements.
+    } catch (error) {
+      console.error("Error updating leaderboard:", error);
+    }
+  };
+
   // Handler to delete a meal using its unique _id
   const handleDeleteMeal = async (_id: string | number) => {
     try {
-      await fetch(`http://192.168.1.4:5500/mealHistory/deleteMeal/${_id}`, {
+      // Update the URL to match the correct server IP and port.
+      await fetch(`http://192.168.1.2:5500/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMeals(prev => prev.filter(item => item._id !== _id));
+      
+      // Update leaderboard data after deletion
+      await updateLeaderboard();
     } catch (error) {
       console.error("Error deleting meal:", error);
     }
@@ -138,7 +155,7 @@ const AllMealsScreen: React.FC = () => {
       enableTrackpadTwoFingerGesture
       rightThreshold={40}
       renderRightActions={RightAction}
-      onSwipeableOpen={(direction, swipeable) => {
+      onSwipeableOpen={(direction) => {
         if (direction === 'right') {
           handleDeleteMeal(item._id);
         }
@@ -278,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    paddingBottom:20,
+    paddingBottom: 20,
     borderBottomColor: '#EDF2F7',
   },
   filterContent: {
@@ -308,7 +325,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
- 
   },
   swipeable: {
     borderRadius: 10,

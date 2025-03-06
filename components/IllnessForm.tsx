@@ -1,114 +1,177 @@
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Platform 
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+  Modal,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
-import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ChevronDown, Calendar, AlertCircle } from 'lucide-react-native';
+import { useUser } from '@clerk/clerk-expo';
 
-function RecordIllnessForm() {
+function RecordIllnessForm({onSubmitSuccess}) {
+  const { user } = useUser();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [illness, setIllness] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(async () => {
     if (!illness.trim()) {
       setError('Please enter the illness name');
       return;
     }
-    // Handle form submission
-    console.log({ illness, date });
-    setError('');
-    setIllness('');
-    setDate(new Date());
-    setIsFormVisible(false);
-  };
+    try {
+      // Use the Clerk user id from "user"
+      const response = await fetch('http://192.168.1.2:5500/illness/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          illness,
+          diagnosisDate: date,
+          user_id: user?.id,
+        }),
+      });
 
-  const onDateChange = (event, selectedDate) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Record illness submitted:", data);
+      setError('');
+      setIllness('');
+      setDate(new Date());
+      // Close the modal upon successful submission
+      onSubmitSuccess();
+      setIsFormVisible(false);
+    } catch (err) {
+      console.error("Error submitting illness record:", err);
+      setError("Error submitting illness record. Please try again.");
+    }
+  }, [illness, date, user?.id]);
+
+  const onDateChange = useCallback((event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
     }
-  };
+  }, []);
 
-  const formatDate = (date) => {
+  const formatDate = useCallback((date) => {
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-  };
+  }, []);
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity 
+      {/* Button to open the illness form modal */}
+      <TouchableOpacity
         style={styles.header}
-        onPress={() => setIsFormVisible(!isFormVisible)}
+        onPress={() => setIsFormVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Open Record Illness Form"
       >
         <View style={styles.headerContent}>
           <AlertCircle size={22} color="#dc2626" strokeWidth={2} />
           <Text style={styles.title}>Record an Illness</Text>
         </View>
-        <ChevronDown 
-          size={20} 
-          color="#64748b" 
-          style={[
-            styles.chevron,
-            isFormVisible && styles.chevronUp
-          ]}
-        />
+        <ChevronDown size={20} color="#64748b" style={styles.chevron} />
       </TouchableOpacity>
 
-      {isFormVisible && (
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Type or Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter illness name"
-              value={illness}
-              onChangeText={(text) => {
-                setIllness(text);
-                setError('');
-              }}
-              placeholderTextColor="#94a3b8"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Date of Diagnosis</Text>
-            <TouchableOpacity 
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.dateText}>{formatDate(date)}</Text>
-              <Calendar size={20} color="#64748b" />
-            </TouchableOpacity>
-          </View>
-
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
-
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={handleSubmit}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isFormVisible}
+        onRequestClose={() => setIsFormVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalContainer}
           >
-            <Text style={styles.submitButtonText}>Submit</Text>
-          </TouchableOpacity>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Record an Illness</Text>
+                <TouchableOpacity
+                  onPress={() => setIsFormVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close Record Illness Form"
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={styles.formContainer}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Type or Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter illness name"
+                    placeholderTextColor="#94a3b8"
+                    value={illness}
+                    onChangeText={(text) => {
+                      setIllness(text);
+                      setError('');
+                    }}
+                    accessibilityLabel="Illness name input"
+                  />
+                </View>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display="default"
-              onChange={onDateChange}
-              maximumDate={new Date()}
-            />
-          )}
-        </View>
-      )}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Date of Diagnosis</Text>
+                  <TouchableOpacity
+                    style={styles.dateInput}
+                    onPress={() => setShowDatePicker(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Select date of diagnosis"
+                  >
+                    <Text style={styles.dateText}>{formatDate(date)}</Text>
+                    <Calendar size={20} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+
+                {error ? (
+                  <Text style={styles.errorText} accessibilityLiveRegion="polite">
+                    {error}
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                  accessibilityRole="button"
+                  accessibilityLabel="Submit illness record"
+                >
+                  <Text style={styles.submitButtonText}>Submit</Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                  />
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -120,6 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#f1f5f9',
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -128,14 +192,12 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    alignItems: 'center',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   title: {
     fontSize: 18,
@@ -143,16 +205,41 @@ const styles = StyleSheet.create({
     color: '#2E664A',
     letterSpacing: 1,
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
+    marginLeft: 12,
   },
   chevron: {
     transform: [{ rotate: '0deg' }],
   },
-  chevronUp: {
-    transform: [{ rotate: '180deg' }],
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2E664A',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#dc2626',
+    fontWeight: '600',
   },
   formContainer: {
-    padding: 20,
-    paddingTop: 0,
+    paddingBottom: 20,
   },
   inputContainer: {
     marginBottom: 16,
@@ -162,8 +249,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748b',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -191,11 +278,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
   submitButton: {
-    backgroundColor: '#2E664A', // Updated to darker primary green
+    backgroundColor: '#2E664A',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',

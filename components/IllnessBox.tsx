@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 
-function IllnessCauseCard({ foodItem, date, illnessName = "illness_name" }) {
+function IllnessCauseCard({ foodItem, date, illnessName = "illness_name", reason }) {
   return (
     <View style={styles.card}>
       <View style={styles.headerContainer}>
@@ -25,6 +25,12 @@ function IllnessCauseCard({ foodItem, date, illnessName = "illness_name" }) {
             <Text style={styles.label}>CONSUMED ON</Text>
             <Text style={styles.value}>{date}</Text>
           </View>
+        </View>
+
+        {/* New Reason Section */}
+        <View style={styles.reasonContainer}>
+          <Text style={styles.reasonLabel}>Reason</Text>
+          <Text style={styles.reasonText}>{reason}</Text>
         </View>
       </View>
 
@@ -110,6 +116,26 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
+  },
+  reasonContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+  },
+  reasonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+  },
+  reasonText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
   disclaimerText: {
     fontSize: 13,

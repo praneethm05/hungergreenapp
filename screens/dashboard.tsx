@@ -19,45 +19,58 @@ import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 import { useUser } from "@clerk/clerk-expo";
 
-
 const Dashboard = () => {
   const navigation = useNavigation<any>();
   const [meal, setMeal] = useState<string>('');
   const [hungerScore, setHungerScore] = useState<number>(75);
+  const [streak, setStreak] = useState<number>(0);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [lastMealInfo, setLastMealInfo] = useState<any>(null);
   const [mealHistory, setMealHistory] = useState<any[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestion, setSuggestion] = useState<any>(null);
+  // New state variable to force re-render AlertBox
+  const [alertBoxKey, setAlertBoxKey] = useState<number>(0);
+  // New state for illness analysis data and its visibility
+  const [illnessData, setIllnessData] = useState<any>(null);
+  const [showIllnessCard, setShowIllnessCard] = useState<boolean>(false);
+
   const { user } = useUser();
   const userId = user?.id;
 
+  // Helper to format illness date
+  const formatIllnessDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
 
+  // Fetch user data
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(`http://192.168.1.6:5500/users/${userId}`);
+        const response = await fetch(`http://192.168.1.2:5500/users/${userId}`);
         const data = await response.json();
         setUserName(data.name);
       } catch (error) {
         console.error("Error fetching user data: ", error);
       }
     }
-    fetchUser();
+    if (userId) fetchUser();
   }, [userId]);
 
+  // Fetch meal history
   useEffect(() => {
     async function fetchMealHistory() {
       try {
-        const response = await fetch(`http://192.168.1.6:5500/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.2:5500/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         setMealHistory(data);
       } catch (error) {
         console.error("Error fetching meal history: ", error);
       }
     }
-    fetchMealHistory();
+    if (userId) fetchMealHistory();
   }, [userId]);
 
   // Enrich meal history if nutrition info is missing
@@ -67,7 +80,7 @@ const Dashboard = () => {
         mealHistory.map(async (meal) => {
           if (!meal.nutrition) {
             try {
-              const response = await fetch(`http://192.168.1.6:5500/mealSearch/getMeal/${meal.meal_id}`);
+              const response = await fetch(`http://192.168.1.2:5500/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await response.json();
               return {
                 ...meal,
@@ -91,23 +104,67 @@ const Dashboard = () => {
     }
   }, [mealHistory.length]);
 
-  // Helper function to refresh suggestion from the API
-  const refreshSuggestion = async () => {
+  // Fetch suggestion on mount
+  useEffect(() => {
+    const refreshSuggestion = async () => {
+      try {
+        const response = await fetch(`http://192.168.1.2:5500/suggestions/${userId}`);
+        const data = await response.json();
+        setSuggestion(data);
+      } catch (error) {
+        console.error("Error fetching suggestion: ", error);
+      }
+    };
+    if (userId) refreshSuggestion();
+  }, [userId]);
+
+  // Define fetchIllnessAnalysis function once so it can be used in both useEffect and RecordIllnessForm
+  const fetchIllnessAnalysis = async () => {
     try {
-      const response = await fetch(`http://192.168.1.6:5500/suggestions/${userId}`);
+      const response = await fetch(`http://192.168.1.2:5500/illness/analysis/${userId}`);
       const data = await response.json();
-      setSuggestion(data);
+      // Check if data has the required fields
+      if (data && data.foodItem && data.date && data.illnessName) {
+        setIllnessData(data);
+        setShowIllnessCard(true);
+      } else {
+        setIllnessData(null);
+        setShowIllnessCard(false);
+      }
     } catch (error) {
-      console.error("Error fetching suggestion: ", error);
+      console.error("Error fetching illness analysis: ", error);
+      setIllnessData(null);
+      setShowIllnessCard(false);
     }
   };
 
-  // Fetch suggestion on mount
+  // Call fetchIllnessAnalysis when userId changes
   useEffect(() => {
-    refreshSuggestion();
+    if (userId) {
+      fetchIllnessAnalysis();
+    }
   }, [userId]);
 
-  // Helper function to calculate updated time string using getTime()
+  // Function to fetch leaderboard info and update hunger score and streak
+  const fetchLeaderboardData = async () => {
+    try {
+      const response = await fetch(`http://192.168.1.2:5500/leaderboard/info/${userId}`);
+      const data = await response.json();
+      setHungerScore(data.hunger_score);
+      setStreak(data.streak || 0);
+    } catch (error) {
+      console.error("Error fetching leaderboard data: ", error);
+    }
+  };
+
+  // Initial fetch for leaderboard data
+  useEffect(() => {
+    if (userId) {
+      fetchLeaderboardData();
+    }
+  }, [userId]);
+
+  // Helper function to calculate updated time string for suggestions
   const getUpdatedTime = (createdAt: string): string => {
     const created = new Date(createdAt);
     const diffMs = new Date().getTime() - created.getTime();
@@ -129,13 +186,14 @@ const Dashboard = () => {
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
+
   const handleMealSubmit = async () => {
     if (!meal.trim()) return;
     setLoading(true);
     try {
       // Fetch nutritional info for the meal
       const nutritionResponse = await fetch(
-        `http://192.168.1.6:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
+        `http://192.168.1.2:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
       );
       const nutritionData = await nutritionResponse.json();
   
@@ -151,7 +209,7 @@ const Dashboard = () => {
       };
   
       // Log the meal via POST API
-      const postResponse = await fetch("http://192.168.1.6:5500/mealHistory/logMeal", {
+      const postResponse = await fetch("http://192.168.1.2:5500/mealHistory/logMeal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newMealEntry)
@@ -164,9 +222,21 @@ const Dashboard = () => {
       setModalVisible(true);
       setMeal('');
   
-      // Check the suggestion's age using the full date
-    
-        await refreshSuggestion();
+      // Call leaderboard update API after logging the meal
+      await fetch(`http://192.168.1.2:5500/leaderboard/update/${userId}`, {
+        method: 'POST'
+      });
+  
+      // Re-fetch leaderboard data to update hunger health info
+      await fetchLeaderboardData();
+  
+      // Refresh suggestion after logging the meal
+      const suggestionResponse = await fetch(`http://192.168.1.2:5500/suggestions/${userId}`);
+      const suggestionData = await suggestionResponse.json();
+      setSuggestion(suggestionData);
+
+      // Force AlertBox to re-render by updating its key
+      setAlertBoxKey(prev => prev + 1);
   
     } catch (error) {
       console.error("Error logging meal: ", error);
@@ -174,14 +244,21 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-  
 
+  // Updated deletion handler to update leaderboard data after deletion
   const handleDeleteMeal = async (_id: string) => {
     try {
-      await fetch(`http://192.168.1.6:5500/mealHistory/deleteMeal/${_id}`, {
+      await fetch(`http://192.168.1.2:5500/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMealHistory(prev => prev.filter(item => item._id !== _id));
+      
+      // Update leaderboard data after deletion:
+      await fetch(`http://192.168.1.2:5500/leaderboard/update/${userId}`, {
+        method: 'POST'
+      });
+      await fetchLeaderboardData();
+      
     } catch (error) {
       console.error("Error deleting meal: ", error);
     }
@@ -271,8 +348,8 @@ const Dashboard = () => {
           <View style={styles.healthContainer}>
             {[
               { value: mealHistory.length.toString(), label: 'Meals Logged', color: '#3E885B', bg: '#EFF5F1' },
-              { value: hungerScore.toString(), label: 'Hunger Score', color: '#2E664A', bg: '#F0FDF4' },
-              { value: '28', label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
+              { value: parseFloat(hungerScore.toString()).toFixed(2), label: 'Hunger Score', color: '#2E664A', bg: '#F0FDF4' },
+              { value: streak.toString(), label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
             ].map((item, index) => (
               <View key={index} style={[styles.healthItem, { backgroundColor: item.bg, marginHorizontal: 4 }]}>
                 <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>
@@ -282,7 +359,23 @@ const Dashboard = () => {
           </View>
         </View>
 
-        <IllnessCauseCard foodItem="Chicken" date="2022-01-01" illnessName="Stomach Ache" />
+        {/* Illness Analysis Card with a Close Button */}
+        {showIllnessCard && illnessData && (
+          <View style={styles.illnessCardWrapper}>
+            <TouchableOpacity 
+              onPress={() => setShowIllnessCard(false)} 
+              style={styles.illnessCardCloseButton}
+            >
+              <Text style={styles.closeButtonText}>X</Text>
+            </TouchableOpacity>
+            <IllnessCauseCard
+              foodItem={illnessData.foodItem}
+              date={formatIllnessDate(illnessData.date)}
+              illnessName={illnessData.illnessName}
+              reason={illnessData.reason}
+            />
+          </View>
+        )}
 
         {/* Recent Meals */}
         <View style={styles.card}>
@@ -290,7 +383,7 @@ const Dashboard = () => {
             <Text style={styles.title}>Recent Meals</Text>
             <TouchableOpacity
               style={styles.seeAllButton}
-              onPress={() => (navigation as any).navigate('AllMeals')}
+              onPress={() => navigation.navigate('AllMeals')}
             >
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
@@ -305,7 +398,7 @@ const Dashboard = () => {
                   enableTrackpadTwoFingerGesture
                   rightThreshold={40}
                   renderRightActions={RightAction}
-                  onSwipeableOpen={(direction, swipeable) => {
+                  onSwipeableOpen={(direction) => {
                     if (direction === 'right') {
                       handleDeleteMeal(mealItem._id);
                     }
@@ -376,8 +469,10 @@ const Dashboard = () => {
           )}
         </View>
 
-        <AlertBox />
-        <RecordIllnessForm />
+        <AlertBox key={alertBoxKey} />
+
+        <RecordIllnessForm onSubmitSuccess={fetchIllnessAnalysis} />
+     
       </ScrollView>
 
       <MealDetailsModal
@@ -631,7 +726,6 @@ const styles = StyleSheet.create({
     padding: 16,
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif-light',
   },
-  // Redesigned Nutrition Tips Card Styles (without icon)
   tipCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -702,6 +796,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  // Styles for the illness card wrapper and close button
+  illnessCardWrapper: {
+    marginBottom: 16,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    position: 'relative'
+  },
+  illnessCardCloseButton: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    zIndex: 1,
+    backgroundColor: '#F44336',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+    lineHeight: 14
+  }
 });
 
 export default Dashboard;

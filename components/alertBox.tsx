@@ -1,9 +1,8 @@
 import { 
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, 
-  ScrollView, Dimensions, Platform 
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions, Platform, ActivityIndicator 
 } from 'react-native';
-import { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Droplet, Beef, Apple } from 'lucide-react-native';
+import { useState, useEffect, useRef } from 'react';
+import * as LucideIcons from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 16;
@@ -11,47 +10,26 @@ const CONTAINER_PADDING = 24;
 const ALERT_WIDTH = width - (2 * CONTAINER_PADDING);
 
 function AlertBox() {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
   const scrollViewRef = useRef(null);
 
-  const alerts = [
-    {
-      title: 'Nutrition Alert',
-      message: 'Today you are lacking fiber in your diet',
-      type: 'fiber',
-      expected: '38g',
-      current: '15g',
-      icon: Apple,
-      progress: 39,
-      backgroundColor: '#fff3f3',
-      textColor: '#991b1b',
-      boxColors: ['#f0fdf4', '#fee2e2']
-    },
-    {
-      title: 'Protein Intake',
-      message: 'Great job hitting your protein goals!',
-      type: 'protein',
-      expected: '56g',
-      current: '62g',
-      icon: Beef,
-      progress: 110,
-      backgroundColor: '#f0fdf4',
-      textColor: '#166534',
-      boxColors: ['#dcfce7', '#dcfce7']
-    },
-    {
-      title: 'Hydration Alert',
-      message: 'You need to drink more water',
-      type: 'water',
-      expected: '2.5L',
-      current: '1.2L',
-      icon: Droplet,
-      progress: 48,
-      backgroundColor: '#eff6ff',
-      textColor: '#1e40af',
-      boxColors: ['#dbeafe', '#fee2e2']
+  // Fetch alerts from your API endpoint
+  useEffect(() => {
+    async function fetchAlerts() {
+      try {
+        const response = await fetch('http://192.168.1.2:5500/healthstats/user_2tvd1715aTDTRkhDpuScbcvi6yh');
+        const data = await response.json();
+        setAlerts(data);
+      } catch (error) {
+        console.error('Error fetching health alerts:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    fetchAlerts();
+  }, []);
 
   const handleScroll = (event) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
@@ -62,7 +40,7 @@ function AlertBox() {
   const scrollToAlert = (index) => {
     scrollViewRef.current?.scrollTo({
       x: index * ALERT_WIDTH,
-      animated: true
+      animated: true,
     });
   };
 
@@ -71,6 +49,23 @@ function AlertBox() {
       <View style={[styles.progressBar, { width: `${Math.min(progress, 100)}%` }]} />
     </View>
   );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#2E664A" />
+        <Text style={styles.loadingText}>Loading alerts...</Text>
+      </View>
+    );
+  }
+
+  if (!alerts || alerts.length === 0) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>No alerts available.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -83,7 +78,7 @@ function AlertBox() {
               onPress={() => scrollToAlert(currentAlertIndex - 1)}
               disabled={currentAlertIndex === 0}
             >
-              <ChevronLeft size={20} color={currentAlertIndex === 0 ? '#94a3b8' : '#64748b'} />
+              <LucideIcons.ChevronLeft size={20} color={currentAlertIndex === 0 ? '#94a3b8' : '#64748b'} />
             </TouchableOpacity>
             <Text style={styles.alertCounter}>
               {currentAlertIndex + 1}/{alerts.length}
@@ -93,7 +88,7 @@ function AlertBox() {
               onPress={() => scrollToAlert(currentAlertIndex + 1)}
               disabled={currentAlertIndex === alerts.length - 1}
             >
-              <ChevronRight size={20} color={currentAlertIndex === alerts.length - 1 ? '#94a3b8' : '#64748b'} />
+              <LucideIcons.ChevronRight size={20} color={currentAlertIndex === alerts.length - 1 ? '#94a3b8' : '#64748b'} />
             </TouchableOpacity>
           </View>
         </View>
@@ -109,37 +104,61 @@ function AlertBox() {
           decelerationRate="fast"
           contentContainerStyle={styles.scrollContent}
         >
-          {alerts.map((alert, index) => (
-            <View 
-              key={index}
-              style={[
-                styles.alertBox,
-                { 
-                  backgroundColor: alert.backgroundColor,
-                  width: ALERT_WIDTH - (2 * CARD_PADDING),
-                }
-              ]}
-            >
-              <View style={styles.alertHeader}>
-                <alert.icon size={24} color={alert.textColor} strokeWidth={2} />
-                <Text style={[styles.alertTitle, { color: alert.textColor }]}>{alert.title}</Text>
-              </View>
-              <Text style={[styles.alertText, { color: alert.textColor }]}>{alert.message}</Text>
-              
-              <View style={styles.fiberContainer}>
-                <View style={[styles.fiberBox, { backgroundColor: alert.boxColors[0] }]}> 
-                  <Text style={styles.fiberLabel}>TARGET</Text>
-                  <Text style={[styles.fiberValue, { color: alert.textColor }]}>{alert.expected}</Text>
+          {alerts.map((alert, index) => {
+            // Dynamically select the icon component from lucide-react-native.
+            const IconComponent = LucideIcons[alert.icon];
+            // Use high-contrast fallback values
+            const backgroundColor = alert.backgroundColor || "#ffffff";
+            const textColor = alert.textColor || "#2E664A";
+            // Ensure numeric values for expected and current; default to 0 if not provided.
+            const recommended = typeof alert.expected === "number" ? alert.expected : 0;
+            const current = typeof alert.current === "number" ? alert.current : 0;
+            // Fallback box colors with high contrast
+            const boxColor1 = (alert.boxColors && alert.boxColors[0]) || "#d0f0fd"; // light blue
+            const boxColor2 = (alert.boxColors && alert.boxColors[1]) || "#fff3e0"; // light orange
+
+            return (
+              <View 
+                key={index}
+                style={[
+                  styles.alertBox,
+                  { 
+                    backgroundColor,
+                    width: ALERT_WIDTH - (2 * CARD_PADDING),
+                  }
+                ]}
+              >
+                <View style={styles.alertHeader}>
+                  {IconComponent && <IconComponent size={24} color={textColor} strokeWidth={2} />}
+                  <Text style={[styles.alertTitle, { color: textColor }]}>{alert.title}</Text>
                 </View>
-                <View style={[styles.fiberBox, { backgroundColor: alert.boxColors[1] }]}> 
-                  <Text style={styles.fiberLabel}>CURRENT</Text>
-                  <Text style={[styles.fiberValue, { color: alert.textColor }]}>{alert.current}</Text>
+                <Text style={[styles.alertText, { color: textColor }]}>{alert.message}</Text>
+                
+                <View style={styles.insightsContainer}>
+                  <View style={[styles.insightBox, { backgroundColor: boxColor1 }]}>
+                    <Text style={styles.insightLabel}>Recommended</Text>
+                    <View style={styles.valueRow}>
+                      <Text style={[styles.insightValue, { color: textColor }]}>{recommended}</Text>
+                      {alert.unit ? (
+                        <Text style={[styles.unitText, { color: textColor }]}>{alert.unit}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <View style={[styles.insightBox, { backgroundColor: boxColor2 }]}>
+                    <Text style={styles.insightLabel}>Your Consumption</Text>
+                    <View style={styles.valueRow}>
+                      <Text style={[styles.insightValue, { color: textColor }]}>{current}</Text>
+                      {alert.unit ? (
+                        <Text style={[styles.unitText, { color: textColor }]}>{alert.unit}</Text>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
+                
+                <ProgressBar progress={alert.progress} />
               </View>
-              
-              <ProgressBar progress={alert.progress} />
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
 
         <View style={styles.paginationContainer}>
@@ -164,6 +183,17 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: 'transparent',
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#2E664A',
+    fontFamily: Platform.OS === "ios" ? "Avenir-Book" : "sans-serif-light",
+  },
   title: {
     fontSize: 18,
     fontWeight: '700',
@@ -175,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: CARD_PADDING,
-    marginBottom: 20, // Added marginBottom to separate cards
+    marginBottom: 20,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -190,7 +220,6 @@ const styles = StyleSheet.create({
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 8,
   },
   alertTitle: {
@@ -205,29 +234,40 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: Platform.OS === "ios" ? "Avenir-Book" : "sans-serif-light",
   },
-  fiberContainer: {
+  insightsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  fiberBox: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+  insightBox: {
     flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginHorizontal: 4,
   },
-  fiberLabel: {
-    fontSize: 12,
-    color: '#374151',
+  insightLabel: {
+    fontSize: 10,
     fontWeight: '600',
     marginBottom: 4,
-    letterSpacing: 0.5,
+    color: '#4b5563',
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
-  fiberValue: {
-    fontSize: 20,
+  insightValue: {
+    fontSize: 18,
     fontWeight: '700',
     fontFamily: Platform.OS === "ios" ? "Avenir-Heavy" : "sans-serif-medium",
+  },
+  unitText: {
+    fontSize: 14,
+    marginLeft: 4,
+    fontWeight: '600',
+    fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
   alertsHeader: {
     flexDirection: 'row',
@@ -238,7 +278,6 @@ const styles = StyleSheet.create({
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   navButton: {
     padding: 8,
@@ -253,19 +292,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     fontWeight: '600',
+    marginHorizontal: 8,
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
-    gap: 8,
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#e2e8f0',
+    marginHorizontal: 4,
   },
   paginationDotActive: {
     backgroundColor: '#2E664A',

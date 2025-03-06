@@ -37,7 +37,7 @@ const EmailSignin = ({ navigation }: { navigation: any }) => {
     setLoading(true);
     try {
       // Optionally check if the user exists (update API endpoint if needed)
-      const response = await fetch(`http://192.168.1.6:5500/users/?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`http://192.168.1.2:5500/users/?email=${encodeURIComponent(email)}`);
       if (!response.ok) {
         throw new Error("Failed to check user existence");
       }
