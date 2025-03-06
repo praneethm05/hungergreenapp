@@ -31,7 +31,7 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSignUp } from "@clerk/clerk-expo";
 
-// Define the form data interface
+// Extend the form data interface to include phone and diet_type
 interface FormData {
   username: string;
   email: string;
@@ -43,6 +43,8 @@ interface FormData {
   sex: string;
   allergies: string;
   medicalConditions: string;
+  diet_type: string;
+  
 }
 
 const initialFormState: FormData = {
@@ -56,6 +58,7 @@ const initialFormState: FormData = {
   sex: "",
   allergies: "",
   medicalConditions: "",
+  diet_type: "Nonvegetarian", // default value
 };
 
 // Define the navigation props interface (adjust as needed)
@@ -77,13 +80,15 @@ const fieldLabels: Record<keyof FormData, string> = {
   sex: "Gender",
   allergies: "Allergies",
   medicalConditions: "Medical Conditions",
+  diet_type: "Diet Type",
 };
 
 const validationRules: Partial<Record<keyof FormData, (v: any) => boolean | string>> = {
   username: (v: string) => v.length >= 3 || "Username must be at least 3 characters",
   email: (v: string) => /\S+@\S+\.\S+/.test(v) || "Please enter a valid email",
   name: (v: string) => v.length >= 2 || "Please enter your full name",
-  phone: (v: string) => /^\d{10}$/.test(v) || "Please enter a valid 10-digit number",
+  phone: (v: string) =>
+    /^\+?[1-9]\d{1,14}$/.test(v) || "Please provide a valid phone number (e.g., +1234567890)",
   weight: (v: string) =>
     (!isNaN(Number(v)) && Number(v) >= 20 && Number(v) <= 300) ||
     "Please enter a valid weight (20-300 kg)",
@@ -91,6 +96,9 @@ const validationRules: Partial<Record<keyof FormData, (v: any) => boolean | stri
     (!isNaN(Number(v)) && Number(v) >= 50 && Number(v) <= 300) ||
     "Please enter a valid height (50-300 cm)",
   sex: (v: string) => !!v || "Please select your gender",
+  diet_type: (v: string) =>
+    ["Vegetarian", "Eggetarian", "Nonvegetarian"].includes(v) ||
+    "Please select a valid diet type",
 };
 
 const Header: React.FC = () => {
@@ -127,7 +135,8 @@ const Header: React.FC = () => {
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { signUp } = useSignUp();
+  // Import setActive along with signUp
+  const { signUp, setActive } = useSignUp();
   const [loading, setLoading] = useState<boolean>(false);
   const [datePickerMode, setDatePickerMode] = useState<"date" | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormState);
@@ -135,21 +144,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [currentField, setCurrentField] = useState<keyof FormData>("username");
   const [fadeAnim] = useState(new Animated.Value(1));
   const [progress, setProgress] = useState<number>(0);
-  const [clerkStep, setClerkStep] = useState<"form" | "phoneVerification">("form");
+  const [clerkStep, setClerkStep] = useState<"form" | "emailVerification">("form");
   const [otp, setOtp] = useState("");
   const [clerkUserId, setClerkUserId] = useState<string | null>(null);
 
   // Ref for improved keyboard handling
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Default country code; enhance if needed.
-  const DEFAULT_COUNTRY_CODE = "+91";
-  // Helper: ensure phone number is in E.164 format.
-  const getFormattedPhone = useCallback(() => {
-    return formData.phone.startsWith("+") ? formData.phone : DEFAULT_COUNTRY_CODE + formData.phone;
-  }, [formData.phone]);
-
-  // Improved keyboard handling.
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (event) => {
       if (Platform.OS === "ios") {
@@ -166,7 +167,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     };
   }, []);
 
-  // Memoize fields.
+  // Memoize fields (order is determined by the keys in initialFormState)
   const fields = useMemo(() => Object.keys(initialFormState) as (keyof FormData)[], []);
 
   const validateField = useCallback(
@@ -199,15 +200,16 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Save user info to your DB (including the email).
+  // Save user info to your DB. All required fields (including phone) are included.
   const saveToDB = async (userId: string | null) => {
     if (!userId) throw new Error("Missing Clerk user ID");
     const payload = {
-      diet_type: "Nonvegetarian",
+      diet_type: formData.diet_type,
       user_id: userId,
       name: formData.name,
       username: formData.username,
-      phone: getFormattedPhone(),
+      email: formData.email,
+      phone: formData.phone,
       dob: formData.dob.toISOString(),
       weight: Number(formData.weight),
       height: Number(formData.height),
@@ -218,7 +220,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
         : [],
       profile_picture: "https://via.placeholder.com/100",
       circle: [],
-      email: formData.email,
     };
     const response = await fetch("http://192.168.1.6:5500/users/", {
       method: "POST",
@@ -231,13 +232,12 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     return response.json();
   };
 
-  // Clerk sign‑up flow (excluding email).
+  // Clerk sign‑up flow using email OTP.
   const handleClerkSignUp = useCallback(async () => {
     try {
       setLoading(true);
-      // Note: emailAddress is omitted from the Clerk create call.
       const result = await signUp.create({
-        phoneNumber: getFormattedPhone(),
+        emailAddress: formData.email,
         username: formData.username,
         unsafeMetadata: {
           name: formData.name,
@@ -247,20 +247,21 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
           sex: formData.sex,
           allergies: formData.allergies,
           medicalConditions: formData.medicalConditions,
+          phone: formData.phone,
+          diet_type: formData.diet_type,
         },
       });
       setClerkUserId(result.createdUserId);
-      // Trigger phone verification.
-      await signUp.preparePhoneNumberVerification();
-      setClerkStep("phoneVerification");
-      Alert.alert("OTP Sent", "A 6‑digit code has been sent to your phone");
+      await signUp.prepareEmailAddressVerification();
+      setClerkStep("emailVerification");
+      Alert.alert("OTP Sent", "A 6‑digit code has been sent to your email");
     } catch (err: any) {
       console.error("Signup error:", err);
       Alert.alert("Sign‑Up Failed", err?.message || "An unknown error occurred during sign‑up.");
     } finally {
       setLoading(false);
     }
-  }, [formData, signUp, getFormattedPhone]);
+  }, [formData, signUp]);
 
   const handleNextField = useCallback(() => {
     if (!validateField(currentField)) return;
@@ -283,7 +284,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   }, [currentField, fields]);
 
-  // OTP verification using attemptPhoneNumberVerification.
+  // OTP verification using attemptEmailAddressVerification.
   const handleVerifyOTP = useCallback(async () => {
     if (!otp || otp.length !== 6) {
       Alert.alert("Invalid OTP", "Please enter a valid 6‑digit OTP");
@@ -292,12 +293,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     console.log("Attempting OTP verification with code:", otp);
     try {
       setLoading(true);
-      const verificationAttempt = await signUp.attemptPhoneNumberVerification({ code: otp });
+      const verificationAttempt = await signUp.attemptEmailAddressVerification({ code: otp });
       console.log("Verification attempt result:", verificationAttempt);
       if (verificationAttempt.status === "complete") {
+        // Set the active session before saving to DB or navigation.
         await saveToDB(verificationAttempt.createdUserId || clerkUserId);
+        await setActive({ session: verificationAttempt.createdSessionId });
+   
         Alert.alert("Success 🎉", "Your account has been created successfully!", [
-          { text: "OK", onPress: () => navigation.navigate("Login") },
+          { text: "OK", onPress: () => {return null} },
         ]);
       } else {
         Alert.alert("Error", "OTP verification incomplete. Please try again.");
@@ -308,7 +312,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [otp, clerkUserId, signUp, navigation, saveToDB]);
+  }, [otp, clerkUserId, signUp, setActive, navigation, saveToDB]);
 
   const renderField = () => {
     const commonProps: Partial<TextInputProps> = {
@@ -361,6 +365,27 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             ))}
           </View>
         );
+      case "diet_type":
+        return (
+          <View style={styles.sexButtonsContainer}>
+            {["Vegetarian", "Eggetarian", "Nonvegetarian"].map((diet) => (
+              <TouchableOpacity
+                key={diet}
+                style={[styles.sexButton, formData.diet_type === diet && styles.selectedSexButton]}
+                onPress={() => updateFormField("diet_type", diet)}
+              >
+                <Text
+                  style={[
+                    styles.sexButtonText,
+                    formData.diet_type === diet && styles.selectedSexButtonText,
+                  ]}
+                >
+                  {diet}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
       default:
         return (
           <TextInput
@@ -368,8 +393,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             value={formData[currentField] as string}
             onChangeText={(text) => updateFormField(currentField, text)}
             keyboardType={
-              ["phone", "weight", "height"].includes(currentField)
+              ["weight", "height"].includes(currentField)
                 ? "numeric"
+                : currentField === "phone"
+                ? "phone-pad"
                 : "default"
             }
           />
@@ -377,8 +404,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Render OTP screen (only mobile verification).
-  if (clerkStep === "phoneVerification") {
+  // Render OTP screen for email verification.
+  if (clerkStep === "emailVerification") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#F6F9F7" />
@@ -389,12 +416,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             contentContainerStyle={styles.scrollViewContent}
           >
             <View style={styles.otpContainer}>
-              <Text >Mobile Verification</Text>
-              <Text >
-                Enter the OTP sent to {getFormattedPhone()}
-              </Text>
+              <Text style={styles.otpHeader}>Email Verification</Text>
+              <Text style={styles.otpMessage}>Enter the OTP sent to your email</Text>
               <TextInput
-                style={[styles.input,]}
+                style={styles.input}
                 value={otp}
                 onChangeText={(text) => {
                   const numericText = text.replace(/[^0-9]/g, "");
@@ -699,8 +724,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: Platform.OS === "ios" ? "Avenir-Medium" : "sans-serif-medium",
   },
-
-  
   otpContainer: {
     flex: 1,
     paddingHorizontal: 30,
@@ -708,7 +731,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F6F9F7",
   },
-  
+  otpHeader: {
+    fontSize: 24,
+    color: "#2E664A",
+    marginBottom: 10,
+    fontWeight: "700",
+  },
+  otpMessage: {
+    fontSize: 16,
+    color: "#5E8C7B",
+    marginBottom: 20,
+    textAlign: "center",
+  },
 });
 
 export default SignUpScreen;

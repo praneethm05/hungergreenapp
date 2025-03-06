@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Swipeable as ReanimatedSwipeable } from 'react-native-gesture-handler';
 import MealDetailsModal from '../components/MealDetailsModal'; // Ensure this component exists and is properly configured
+import { useUser } from "@clerk/clerk-expo";
 
 // Extend the Meal interface to include nutritional info and feedback
 interface Meal {
@@ -35,7 +36,8 @@ const AllMealsScreen: React.FC = () => {
   const [lastMealInfo, setLastMealInfo] = useState<Meal | null>(null);
 
   // Static user id for demo purposes
-  const userId = "4d28d6fb-d7ba-43b3-b7fa-13ed49063fb3";
+  const { user } = useUser();
+  const userId = user?.id;
 
   // Fetch meal history and enrich each meal with nutritional info from the mealSearch API
   useEffect(() => {

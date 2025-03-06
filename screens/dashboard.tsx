@@ -17,6 +17,8 @@ import { Camera, Sun, Send, User, TrendingUp } from 'lucide-react-native';
 import { IllnessCauseCard } from '../components/IllnessBox';
 import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
+import { useUser } from "@clerk/clerk-expo";
+
 
 const Dashboard = () => {
   const navigation = useNavigation<any>();
@@ -28,9 +30,9 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [suggestion, setSuggestion] = useState<any>(null);
+  const { user } = useUser();
+  const userId = user?.id;
 
-  // Assume a static user id for demo purposes
-  const userId: string = "4d28d6fb-d7ba-43b3-b7fa-13ed49063fb3";
 
   useEffect(() => {
     async function fetchUser() {

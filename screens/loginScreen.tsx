@@ -100,9 +100,9 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const handlePhoneSignIn = () => {
-    console.log("Phone Sign-In button pressed");
-    navigation.navigate("PhoneLogin");
+  const handleEmailSignIn = () => {
+    console.log("Email Sign-In button pressed");
+    navigation.navigate("EmailSignIn");
   };
 
   const handleSignUp = () => {
@@ -136,12 +136,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
               <View style={styles.buttonsContainer}>
                 <ActionButton
-                  icon="phone"
-                  text="Continue with Phone"
+                  icon="envelope"
+                  text="Continue with Email"
                   backgroundColor="#FFFFFF"
                   textColor="#333333"
                   borderColor="#E0E0E0"
-                  onPress={handlePhoneSignIn}
+                  onPress={handleEmailSignIn}
                 />
 
                 <TouchableOpacity onPress={handleSignUp} activeOpacity={0.8}>
@@ -154,7 +154,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                         name="user-plus"
                         size={18}
                         color="#FFFFFF"
-                        // Overriding the default margin to keep the icon and text centered
                         style={[styles.buttonIcon, { marginRight: 8 }]}
                       />
                       <Text style={[styles.actionButtonText, { color: "#FFFFFF" }]}>
@@ -287,7 +286,7 @@ const styles = StyleSheet.create({
   buttonContentContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center", // This centers the icon and text together
+    justifyContent: "center",
     width: "100%",
   },
   buttonIcon: {

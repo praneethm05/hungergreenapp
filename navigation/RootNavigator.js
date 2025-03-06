@@ -10,7 +10,7 @@ import BottomNav from "../components/BottomNav";
 import CustomHeader from "../components/CustomHeader";
 import ProfileSettings from "../screens/ProfileManagement";
 import AllMealsScreen from "../screens/AllMealsScreen";
-import PhoneSignIn from "../screens/PhoneSignIn";
+import EmailSignIn from "../screens/EmailSignIn";
 
 const AuthStack = createStackNavigator();
 const AppStack = createStackNavigator();
@@ -30,8 +30,8 @@ function AuthStackNavigator() {
       />
 
       <AuthStack.Screen
-        name="PhoneLogin"
-        component={PhoneSignIn}
+        name="EmailSignIn"
+        component={EmailSignIn}
         options={{ headerShown: false }}
       />
     </AuthStack.Navigator>
@@ -77,7 +77,7 @@ function RootNavigator() {
     );
   }
 
-  return isSignedIn ? <AuthStackNavigator /> : <AppStackNavigator />;
+  return isSignedIn ? <AppStackNavigator /> : <AuthStackNavigator />;
 }
 
 export default RootNavigator;
