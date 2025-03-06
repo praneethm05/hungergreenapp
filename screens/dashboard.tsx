@@ -348,8 +348,8 @@ const Dashboard = () => {
           <View style={styles.healthContainer}>
             {[
               { value: mealHistory.length.toString(), label: 'Meals Logged', color: '#3E885B', bg: '#EFF5F1' },
-              { value: parseFloat(hungerScore.toString()).toFixed(2), label: 'Hunger Score', color: '#2E664A', bg: '#F0FDF4' },
-              { value: streak.toString(), label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
+              { value: parseFloat((hungerScore ?? 0).toString()).toFixed(2), label: 'Hunger Score', color: '#2E664A', bg: '#F0FDF4' },
+              { value: (streak ?? 0).toString(), label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
             ].map((item, index) => (
               <View key={index} style={[styles.healthItem, { backgroundColor: item.bg, marginHorizontal: 4 }]}>
                 <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>

@@ -11,6 +11,8 @@ import CustomHeader from "../components/CustomHeader";
 import ProfileSettings from "../screens/ProfileManagement";
 import AllMealsScreen from "../screens/AllMealsScreen";
 import EmailSignIn from "../screens/EmailSignIn";
+import { User } from "lucide-react-native";
+import UserProfile from "../screens/UserProfile";
 
 const AuthStack = createStackNavigator();
 const AppStack = createStackNavigator();
@@ -50,6 +52,12 @@ function AppStackNavigator() {
       <AppStack.Screen
         name="AllMeals"
         component={AllMealsScreen}
+        options={{ headerShown: true }}
+      />
+
+      <AppStack.Screen
+        name="UserProfile"
+        component={UserProfile}
         options={{ headerShown: true }}
       />
       <AppStack.Screen name="Profile" component={ProfileSettings} />

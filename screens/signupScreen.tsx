@@ -44,7 +44,6 @@ interface FormData {
   allergies: string;
   medicalConditions: string;
   diet_type: string;
-  
 }
 
 const initialFormState: FormData = {
@@ -135,7 +134,6 @@ const Header: React.FC = () => {
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  // Import setActive along with signUp
   const { signUp, setActive } = useSignUp();
   const [loading, setLoading] = useState<boolean>(false);
   const [datePickerMode, setDatePickerMode] = useState<"date" | null>(null);
@@ -147,8 +145,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [clerkStep, setClerkStep] = useState<"form" | "emailVerification">("form");
   const [otp, setOtp] = useState("");
   const [clerkUserId, setClerkUserId] = useState<string | null>(null);
-
-  // Ref for improved keyboard handling
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -167,7 +163,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     };
   }, []);
 
-  // Memoize fields (order is determined by the keys in initialFormState)
   const fields = useMemo(() => Object.keys(initialFormState) as (keyof FormData)[], []);
 
   const validateField = useCallback(
@@ -200,7 +195,9 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Save user info to your DB. All required fields (including phone) are included.
+  // Save user info to your DB.
+  // BMI is calculated by the backend using weight and height.
+  // This function converts allergies and medical conditions into arrays (splitting on commas).
   const saveToDB = async (userId: string | null) => {
     if (!userId) throw new Error("Missing Clerk user ID");
     const payload = {
@@ -214,9 +211,11 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       weight: Number(formData.weight),
       height: Number(formData.height),
       sex: formData.sex,
-      allergies: formData.allergies ? formData.allergies.split(",").map((a) => a.trim()) : [],
+      allergies: formData.allergies
+        ? formData.allergies.split(",").map((a) => a.trim()).filter(Boolean)
+        : [],
       medical_conditions: formData.medicalConditions
-        ? formData.medicalConditions.split(",").map((c) => c.trim())
+        ? formData.medicalConditions.split(",").map((c) => c.trim()).filter(Boolean)
         : [],
       profile_picture: "https://via.placeholder.com/100",
       circle: [],
@@ -232,7 +231,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     return response.json();
   };
 
-  // Clerk sign‑up flow using email OTP.
   const handleClerkSignUp = useCallback(async () => {
     try {
       setLoading(true);
@@ -284,7 +282,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   }, [currentField, fields]);
 
-  // OTP verification using attemptEmailAddressVerification.
   const handleVerifyOTP = useCallback(async () => {
     if (!otp || otp.length !== 6) {
       Alert.alert("Invalid OTP", "Please enter a valid 6‑digit OTP");
@@ -296,12 +293,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       const verificationAttempt = await signUp.attemptEmailAddressVerification({ code: otp });
       console.log("Verification attempt result:", verificationAttempt);
       if (verificationAttempt.status === "complete") {
-        // Set the active session before saving to DB or navigation.
         await saveToDB(verificationAttempt.createdUserId || clerkUserId);
         await setActive({ session: verificationAttempt.createdSessionId });
-   
         Alert.alert("Success 🎉", "Your account has been created successfully!", [
-          { text: "OK", onPress: () => {return null} },
+          { text: "OK", onPress: () => { return null; } },
         ]);
       } else {
         Alert.alert("Error", "OTP verification incomplete. Please try again.");
@@ -323,6 +318,30 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       placeholder: `Enter your ${fieldLabels[currentField].toLowerCase()}`,
       autoCapitalize: ["email", "username"].includes(currentField) ? "none" : "words",
     };
+
+    if (currentField === "phone") {
+      return (
+        <TextInput
+          {...commonProps}
+          value={formData.phone}
+          keyboardType="phone-pad"
+          onChangeText={(text) => {
+            let normalized = text;
+            if (normalized === "") {
+              updateFormField("phone", "");
+            } else if (!normalized.startsWith("+91")) {
+              // Remove any non-digit characters
+              const digitsOnly = normalized.replace(/[^0-9]/g, "");
+              normalized = "+91" + digitsOnly;
+              updateFormField("phone", normalized);
+            } else {
+              updateFormField("phone", normalized);
+            }
+          }}
+        />
+      );
+    }
+
     switch (currentField) {
       case "dob":
         return (
@@ -404,7 +423,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Render OTP screen for email verification.
   if (clerkStep === "emailVerification") {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -449,7 +467,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     );
   }
 
-  // Render multi‑step form.
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -743,6 +760,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
+  // ...additional styles remain unchanged
 });
 
 export default SignUpScreen;

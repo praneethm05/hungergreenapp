@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform } from 'react-native';
 import { Search, User } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type RootStackParamList = {
   SearchUsers: undefined;
   UserProfile: { userId: string };
-  // Add other screens as needed
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -30,24 +29,22 @@ export default function SearchUsers() {
   }>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Simulated fetch users function - replace with actual API call
+  // Fetch all users from the provided endpoint
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Replace this with your actual API call
-      // const response = await yourApi.getUsers();
-      // setUsers(response.data);
-      
-      // Mockup data for now
-      const mockUsers = [
-        { id: '1', name: 'Prajwal KT', username: 'prajwalkt', avatar: null },
-        { id: '2', name: 'John Doe', username: 'johndoe', avatar: null },
-        // Add more mock users as needed
-      ];
-      setUsers(mockUsers);
+      const response = await fetch('http://192.168.1.2:5500/users/');
+      const data = await response.json();
+      // Map the response data using user.user_id
+      const mappedUsers = data.map((user: any) => ({
+        id: user.user_id,
+        name: user.name,
+        username: user.username,
+        avatar: user.profile_picture || null,
+      }));
+      setUsers(mappedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      // Add error handling as needed
     } finally {
       setIsLoading(false);
     }
@@ -158,6 +155,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     color: '#0f172a',
     fontSize: 15,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif',
   },
   userCard: {
     flexDirection: 'row',
@@ -188,10 +186,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0f172a',
     marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
   userHandle: {
     fontSize: 14,
     color: '#64748b',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif',
   },
   loadingContainer: {
     padding: 20,
@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#64748b',
     fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
   noResultsContainer: {
     padding: 20,
@@ -209,5 +210,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 16,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
   },
 });
