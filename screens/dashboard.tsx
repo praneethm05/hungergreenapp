@@ -49,7 +49,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(`http://192.168.1.2:5500/users/${userId}`);
+        const response = await fetch(`http://192.168.1.2:550/users/${userId}`);
         const data = await response.json();
         setUserName(data.name);
       } catch (error) {
@@ -63,7 +63,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchMealHistory() {
       try {
-        const response = await fetch(`http://192.168.1.2:5500/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.2:550/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         setMealHistory(data);
       } catch (error) {
@@ -80,7 +80,7 @@ const Dashboard = () => {
         mealHistory.map(async (meal) => {
           if (!meal.nutrition) {
             try {
-              const response = await fetch(`http://192.168.1.2:5500/mealSearch/getMeal/${meal.meal_id}`);
+              const response = await fetch(`http://192.168.1.2:550/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await response.json();
               return {
                 ...meal,
@@ -108,7 +108,7 @@ const Dashboard = () => {
   useEffect(() => {
     const refreshSuggestion = async () => {
       try {
-        const response = await fetch(`http://192.168.1.2:5500/suggestions/${userId}`);
+        const response = await fetch(`http://192.168.1.2:550/suggestions/${userId}`);
         const data = await response.json();
         setSuggestion(data);
       } catch (error) {
@@ -121,7 +121,7 @@ const Dashboard = () => {
   // Define fetchIllnessAnalysis function once so it can be used in both useEffect and RecordIllnessForm
   const fetchIllnessAnalysis = async () => {
     try {
-      const response = await fetch(`http://192.168.1.2:5500/illness/analysis/${userId}`);
+      const response = await fetch(`http://192.168.1.2:550/illness/analysis/${userId}`);
       const data = await response.json();
       // Check if data has the required fields
       if (data && data.foodItem && data.date && data.illnessName) {
@@ -148,7 +148,7 @@ const Dashboard = () => {
   // Function to fetch leaderboard info and update hunger score and streak
   const fetchLeaderboardData = async () => {
     try {
-      const response = await fetch(`http://192.168.1.2:5500/leaderboard/info/${userId}`);
+      const response = await fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`);
       const data = await response.json();
       setHungerScore(data.hunger_score);
       setStreak(data.streak || 0);
@@ -193,7 +193,7 @@ const Dashboard = () => {
     try {
       // Fetch nutritional info for the meal
       const nutritionResponse = await fetch(
-        `http://192.168.1.2:5500/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
+        `http://192.168.1.2:550/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
       );
       const nutritionData = await nutritionResponse.json();
   
@@ -209,7 +209,7 @@ const Dashboard = () => {
       };
   
       // Log the meal via POST API
-      const postResponse = await fetch("http://192.168.1.2:5500/mealHistory/logMeal", {
+      const postResponse = await fetch("http://192.168.1.2:550/mealHistory/logMeal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newMealEntry)
@@ -223,7 +223,7 @@ const Dashboard = () => {
       setMeal('');
   
       // Call leaderboard update API after logging the meal
-      await fetch(`http://192.168.1.2:5500/leaderboard/update/${userId}`, {
+      await fetch(`http://192.168.1.2:550/leaderboard/update/${userId}`, {
         method: 'POST'
       });
   
@@ -231,7 +231,7 @@ const Dashboard = () => {
       await fetchLeaderboardData();
   
       // Refresh suggestion after logging the meal
-      const suggestionResponse = await fetch(`http://192.168.1.2:5500/suggestions/${userId}`);
+      const suggestionResponse = await fetch(`http://192.168.1.2:550/suggestions/${userId}`);
       const suggestionData = await suggestionResponse.json();
       setSuggestion(suggestionData);
 
@@ -248,13 +248,13 @@ const Dashboard = () => {
   // Updated deletion handler to update leaderboard data after deletion
   const handleDeleteMeal = async (_id: string) => {
     try {
-      await fetch(`http://192.168.1.2:5500/mealHistory/deleteMeal/${_id}`, {
+      await fetch(`http://192.168.1.2:550/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMealHistory(prev => prev.filter(item => item._id !== _id));
       
       // Update leaderboard data after deletion:
-      await fetch(`http://192.168.1.2:5500/leaderboard/update/${userId}`, {
+      await fetch(`http://192.168.1.2:550/leaderboard/update/${userId}`, {
         method: 'POST'
       });
       await fetchLeaderboardData();

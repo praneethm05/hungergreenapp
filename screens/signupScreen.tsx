@@ -220,7 +220,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
       profile_picture: "https://via.placeholder.com/100",
       circle: [],
     };
-    const response = await fetch("http://192.168.1.2:5500/users/", {
+    const response = await fetch("http://192.168.1.2:550/users/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

@@ -19,7 +19,7 @@ function AlertBox() {
   useEffect(() => {
     async function fetchAlerts() {
       try {
-        const response = await fetch('http://192.168.1.2:5500/healthstats/user_2tvd1715aTDTRkhDpuScbcvi6yh');
+        const response = await fetch('http://192.168.1.2:550/healthstats/user_2uFUHjSPuP5JsPGTmbgI2xhgFTw');
         const data = await response.json();
         setAlerts(data);
       } catch (error) {

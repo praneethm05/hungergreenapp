@@ -39,7 +39,7 @@ export default function UserProfile() {
   // Fetch user details
   useEffect(() => {
     if (userId) {
-      fetch(`http://192.168.1.2:5500/users/${userId}`)
+      fetch(`http://192.168.1.2:550/users/${userId}`)
         .then(response => response.json())
         .then(data => setProfileData(data))
         .catch(err => console.error("Error fetching user data: ", err));
@@ -49,7 +49,7 @@ export default function UserProfile() {
   // Fetch leaderboard info (streak and hunger_score)
   useEffect(() => {
     if (userId) {
-      fetch(`http://192.168.1.2:5500/leaderboard/info/${userId}`)
+      fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`)
         .then(response => response.json())
         .then(data => setLeaderboardInfo(data))
         .catch(err => console.error("Error fetching leaderboard info: ", err));
@@ -71,15 +71,17 @@ export default function UserProfile() {
   // Handle add-to-circle (friend) action
   const handleAddToCircle = async () => {
     try {
-      const response = await fetch('http://192.168.1.2:5500/circle/add', {
+      const response = await fetch('http://192.168.1.2:550/user/circle/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          friendId: profileData.user_id, // API's user_id field for the viewed profile
-          currentUserId: currentUser?.id
+           // API's user_id field for the viewed profile
+           user_id: currentUser.id,
+          friend_id: userId,
         })
       });
       if (!response.ok) {
+        console.log(response);
         throw new Error('Failed to add friend');
       }
       setIsAddedToCircle(true);

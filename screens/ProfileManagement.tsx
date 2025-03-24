@@ -203,7 +203,7 @@
     useEffect(() => {
       if (user && user.id) {
         const userId = user.id;
-        fetch(`http://192.168.1.2:5500/users/${userId}`)
+        fetch(`http://192.168.1.2:550/users/${userId}`)
           .then(response => response.json())
           .then(data => {
             setProfileData(data);
@@ -216,7 +216,7 @@
     useEffect(() => {
       if (user && user.id) {
         const userId = user.id;
-        fetch(`http://192.168.1.2:5500/leaderboard/info/${userId}`)
+        fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`)
           .then(response => response.json())
           .then(data => {
             setLeaderboardInfo(data);
