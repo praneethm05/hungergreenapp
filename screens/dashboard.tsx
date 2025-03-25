@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { IllnessCauseCard } from '../components/IllnessBox';
 import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 import { useUser } from "@clerk/clerk-expo";
+import { useFocusEffect } from '@react-navigation/native';
 
 const Dashboard = () => {
   const navigation = useNavigation<any>();
@@ -35,6 +36,7 @@ const Dashboard = () => {
   // New state for illness analysis data and its visibility
   const [illnessData, setIllnessData] = useState<any>(null);
   const [showIllnessCard, setShowIllnessCard] = useState<boolean>(false);
+  const [circleFriends, setCircleFriends] = useState<Array<{ id: string, name: string }>>([]);
 
   const { user } = useUser();
   const userId = user?.id;
@@ -44,6 +46,36 @@ const Dashboard = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
+
+
+  const fetchCircleFriends = useCallback(async () => {
+    try {
+      const userResponse = await fetch(`http://192.168.1.2:550/users/${userId}`);
+      const userData = await userResponse.json();
+      const friendIds = userData.circle || [];
+
+      const friendDetailsPromises = friendIds.map(async (friendId: string) => {
+        const friendResponse = await fetch(`http://192.168.1.2:550/users/${friendId}`);
+        const friendData = await friendResponse.json();
+        return { id: friendId, name: friendData.name };
+      });
+
+      const friends = await Promise.all(friendDetailsPromises);
+      setCircleFriends(friends);
+    } catch (error) {
+      console.error("Error fetching circle friends: ", error);
+    }
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) {
+        fetchCircleFriends();
+      }
+    }, [userId, fetchCircleFriends])
+  );
+
+
 
   // Fetch user data
   useEffect(() => {
@@ -316,16 +348,19 @@ const Dashboard = () => {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {['John', 'Sarah', 'Mike', 'Emma'].map((name) => (
-              <View key={name} style={styles.circleItem}>
+            {circleFriends.map((friend) => (
+              <View key={friend.id} style={styles.circleItem}>
                 <TouchableOpacity style={styles.avatar}>
                   <User size={22} color="#5E8C7B" strokeWidth={2} />
                 </TouchableOpacity>
-                <Text style={styles.circleName}>{name}</Text>
+                <Text style={styles.circleName}>{friend.name}</Text>
               </View>
             ))}
             <View style={styles.circleItem}>
-              <TouchableOpacity style={styles.addButton}>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('Circle')}
+              >
                 <Text style={styles.addButtonText}>+</Text>
               </TouchableOpacity>
               <Text style={styles.circleName}>Add More</Text>

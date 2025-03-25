@@ -5,13 +5,7 @@ import { Home, MessageSquare, Settings, UserRoundPlus } from "lucide-react-nativ
 import Dashboard from "../screens/dashboard";
 import SearchUsers from "../screens/SearchUsers";
 import FeedbackScreen from "../screens/FeedbackScreen";
-
-// Dummy Settings Screen
-const SettingsScreen = () => (
-  <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-    <Text style={{ fontSize: 18 }}>Settings</Text>
-  </View>
-);
+import SettingsScreen from "../screens/SettingsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -54,6 +48,7 @@ const BottomNav = () => {
       <Tab.Screen name="Home" component={Dashboard} />
       <Tab.Screen name="Feedback" component={FeedbackScreen} />
       <Tab.Screen name="Circle" component={SearchUsers} />
+ 
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

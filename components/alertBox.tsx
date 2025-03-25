@@ -3,6 +3,7 @@ import {
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import * as LucideIcons from 'lucide-react-native';
+import { useUser } from '@clerk/clerk-react'; // Import useUser from Clerk
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 16;
@@ -10,6 +11,7 @@ const CONTAINER_PADDING = 24;
 const ALERT_WIDTH = width - (2 * CONTAINER_PADDING);
 
 function AlertBox() {
+  const { user: currentUser } = useUser(); // Get the current user
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
@@ -19,9 +21,11 @@ function AlertBox() {
   useEffect(() => {
     async function fetchAlerts() {
       try {
-        const response = await fetch('http://192.168.1.2:550/healthstats/user_2uFUHjSPuP5JsPGTmbgI2xhgFTw');
-        const data = await response.json();
-        setAlerts(data);
+        if (currentUser) {
+          const response = await fetch(`http://192.168.1.2:550/healthstats/${currentUser.id}`);
+          const data = await response.json();
+          setAlerts(data);
+        }
       } catch (error) {
         console.error('Error fetching health alerts:', error);
       } finally {
@@ -29,7 +33,7 @@ function AlertBox() {
       }
     }
     fetchAlerts();
-  }, []);
+  }, [currentUser]); // Add currentUser as a dependency
 
   const handleScroll = (event) => {
     const contentOffset = event.nativeEvent.contentOffset.x;

@@ -32,29 +32,69 @@ export default function UserProfile() {
 
   const [profileData, setProfileData] = useState<any>(null);
   const [leaderboardInfo, setLeaderboardInfo] = useState<any>(null);
-  const [isAddedToCircle, setIsAddedToCircle] = useState(false);
+  const [isFriend, setIsFriend] = useState(false);
 
-
-
-  // Fetch user details
+  // Fetch user details with friend check
   useEffect(() => {
     if (userId) {
       fetch(`http://192.168.1.2:550/users/${userId}`)
         .then(response => response.json())
-        .then(data => setProfileData(data))
+        .then(data => {
+          console.log("User data:", data); // Log user data
+          console.log("Circle data:", data.circle); // Log circle data
+          setProfileData(data);
+          if (currentUser && data.circle?.includes(currentUser.id)) {
+            setIsFriend(true);
+          } else {
+            setIsFriend(false); // Ensure isFriend is false if not in circle
+          }
+        })
         .catch(err => console.error("Error fetching user data: ", err));
     }
-  }, [userId]);
+  }, [userId, currentUser]);
 
   // Fetch leaderboard info (streak and hunger_score)
   useEffect(() => {
     if (userId) {
       fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`)
         .then(response => response.json())
-        .then(data => setLeaderboardInfo(data))
+        .then(data => {
+          console.log("Leaderboard info:", data); // Log leaderboard info
+          setLeaderboardInfo(data);
+        })
         .catch(err => console.error("Error fetching leaderboard info: ", err));
     }
   }, [userId]);
+
+  // Unified friend action handler
+  const handleFriendAction = async () => {
+    try {
+      const endpoint = isFriend ? 'delete' : 'add'; // Use 'delete' for removing
+      const method = isFriend ? 'DELETE' : 'POST';
+      
+      const response = await fetch(`http://192.168.1.2:550/user/circle/${endpoint}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser?.id,
+          friend_id: userId,
+        })
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error response from server: ${errorText}`);
+        throw new Error(`Failed to ${endpoint} friend`);
+      }
+  
+      const responseData = await response.json();
+      console.log(`Friend action response (${endpoint}):`, responseData);
+  
+      setIsFriend(!isFriend);
+    } catch (error) {
+      console.error(`Error ${isFriend ? 'removing' : 'adding'} friend:`, error);
+    }
+  };
 
   // Calculate circle count from profile data
   const circleCount = profileData && Array.isArray(profileData.circle) ? profileData.circle.length : 0;
@@ -66,28 +106,6 @@ export default function UserProfile() {
     if (score >= 80) return ['#4ade80', '#16a34a'];
     if (score >= 60) return ['#facc15', '#eab308'];
     return ['#fb7185', '#e11d48'];
-  };
-
-  // Handle add-to-circle (friend) action
-  const handleAddToCircle = async () => {
-    try {
-      const response = await fetch('http://192.168.1.2:550/user/circle/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-           // API's user_id field for the viewed profile
-           user_id: currentUser.id,
-          friend_id: userId,
-        })
-      });
-      if (!response.ok) {
-        console.log(response);
-        throw new Error('Failed to add friend');
-      }
-      setIsAddedToCircle(true);
-    } catch (error) {
-      console.error('Error adding friend: ', error);
-    }
   };
 
   return (
@@ -157,14 +175,25 @@ export default function UserProfile() {
           </View>
         </View>
 
-        {/* Add to Circle button */}
+        {/* Friend action button */}
         {currentUser && profileData && currentUser.id !== profileData.user_id && (
-          <TouchableOpacity style={styles.addCircleButton} onPress={handleAddToCircle}>
-            <UserPlus size={20} color="#fff" style={styles.addCircleIcon} />
-            <Text style={styles.addCircleButtonText}>
-              {isAddedToCircle ? "Added" : "Add to Circle"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.friendSection}>
+            {isFriend && (
+              <Text style={styles.friendStatusText}>Already in your Circle</Text>
+            )}
+            <TouchableOpacity 
+              style={[
+                styles.addCircleButton, 
+                isFriend && styles.removeButton
+              ]} 
+              onPress={handleFriendAction}
+            >
+              <UserPlus size={20} color="#fff" style={styles.addCircleIcon} />
+              <Text style={styles.addCircleButtonText}>
+                {isFriend ? "Remove from Circle" : "Add to Circle"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </SafeAreaView>
     </ScrollView>
@@ -311,5 +340,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
+  },
+  friendSection: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  friendStatusText: {
+    color: '#2E664A',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  removeButton: {
+    backgroundColor: '#dc2626',
   },
 });

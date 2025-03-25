@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform, StatusBar, Animated } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform, StatusBar } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -15,15 +15,15 @@ const CustomHeader = ({ navigation }) => {
 
         {/* Notification & Profile Icons */}
         <View style={styles.iconContainer}>
-          <TouchableOpacity style={styles.iconButton}>
+          {/* <TouchableOpacity style={styles.iconButton}>
             <FontAwesome name="bell" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity 
             style={styles.profileButton} 
             onPress={() => navigation.navigate("Profile")}
           >
-            <FontAwesome name="user" size={20} color="#FFFFFF" />
+            <FontAwesome name="user" size={25} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -65,27 +65,13 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: "row",
     alignItems: "center",
+    padding:20,
   },
   iconButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    padding: 12,
-    borderRadius: 14,
-    marginRight: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    marginRight: 16,
   },
   profileButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    padding: 12,
-    borderRadius: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    marginLeft: 16,
   },
 });
 
