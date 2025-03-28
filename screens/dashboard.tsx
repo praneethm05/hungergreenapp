@@ -42,6 +42,11 @@ const Dashboard = () => {
   const { user } = useUser();
   const userId = user?.id;
 
+
+  const handleUserPress = (userId: string) => {
+    navigation.navigate('UserProfile', { userId });
+  };
+
   // Helper to format illness date
   const formatIllnessDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -348,7 +353,7 @@ setMeal('');
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.circleScrollView}>
             {circleFriends.map((friend) => (
               <View key={friend.id} style={styles.circleItem}>
-                <TouchableOpacity >
+                <TouchableOpacity onPress={()=>handleUserPress(friend.id)} >
                         <Image 
                                                       source={{ 
                                                         uri: friend.avatar ,
