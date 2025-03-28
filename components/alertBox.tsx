@@ -22,7 +22,7 @@ function AlertBox() {
     async function fetchAlerts() {
       try {
         if (currentUser) {
-          const response = await fetch(`http://192.168.1.2:550/healthstats/${currentUser.id}`);
+          const response = await fetch(`http://192.168.1.4:550/healthstats/${currentUser.id}`);
           const data = await response.json();
           setAlerts(data);
         }

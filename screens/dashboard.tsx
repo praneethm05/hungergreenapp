@@ -12,13 +12,12 @@ import {
 } from 'react-native';
 import MealDetailsModal from '../components/MealDetailsModal';
 import ReanimatedSwipeable from 'react-native-gesture-handler/Swipeable';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Camera, Sun, Send, User, TrendingUp } from 'lucide-react-native';
 import { IllnessCauseCard } from '../components/IllnessBox';
 import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 import { useUser } from "@clerk/clerk-expo";
-import { useFocusEffect } from '@react-navigation/native';
 
 const Dashboard = () => {
   const navigation = useNavigation<any>();
@@ -47,15 +46,14 @@ const Dashboard = () => {
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-
   const fetchCircleFriends = useCallback(async () => {
     try {
-      const userResponse = await fetch(`http://192.168.1.2:550/users/${userId}`);
+      const userResponse = await fetch(`http://192.168.1.4:550/users/${userId}`);
       const userData = await userResponse.json();
       const friendIds = userData.circle || [];
 
       const friendDetailsPromises = friendIds.map(async (friendId: string) => {
-        const friendResponse = await fetch(`http://192.168.1.2:550/users/${friendId}`);
+        const friendResponse = await fetch(`http://192.168.1.4:550/users/${friendId}`);
         const friendData = await friendResponse.json();
         return { id: friendId, name: friendData.name };
       });
@@ -75,13 +73,11 @@ const Dashboard = () => {
     }, [userId, fetchCircleFriends])
   );
 
-
-
   // Fetch user data
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch(`http://192.168.1.2:550/users/${userId}`);
+        const response = await fetch(`http://192.168.1.4:550/users/${userId}`);
         const data = await response.json();
         setUserName(data.name);
       } catch (error) {
@@ -95,7 +91,7 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchMealHistory() {
       try {
-        const response = await fetch(`http://192.168.1.2:550/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.4:550/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         setMealHistory(data);
       } catch (error) {
@@ -112,7 +108,7 @@ const Dashboard = () => {
         mealHistory.map(async (meal) => {
           if (!meal.nutrition) {
             try {
-              const response = await fetch(`http://192.168.1.2:550/mealSearch/getMeal/${meal.meal_id}`);
+              const response = await fetch(`http://192.168.1.4:550/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await response.json();
               return {
                 ...meal,
@@ -140,7 +136,7 @@ const Dashboard = () => {
   useEffect(() => {
     const refreshSuggestion = async () => {
       try {
-        const response = await fetch(`http://192.168.1.2:550/suggestions/${userId}`);
+        const response = await fetch(`http://192.168.1.4:550/suggestions/${userId}`);
         const data = await response.json();
         setSuggestion(data);
       } catch (error) {
@@ -153,7 +149,7 @@ const Dashboard = () => {
   // Define fetchIllnessAnalysis function once so it can be used in both useEffect and RecordIllnessForm
   const fetchIllnessAnalysis = async () => {
     try {
-      const response = await fetch(`http://192.168.1.2:550/illness/analysis/${userId}`);
+      const response = await fetch(`http://192.168.1.4:550/illness/analysis/${userId}`);
       const data = await response.json();
       // Check if data has the required fields
       if (data && data.foodItem && data.date && data.illnessName) {
@@ -180,7 +176,7 @@ const Dashboard = () => {
   // Function to fetch leaderboard info and update hunger score and streak
   const fetchLeaderboardData = async () => {
     try {
-      const response = await fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`);
+      const response = await fetch(`http://192.168.1.4:550/leaderboard/info/${userId}`);
       const data = await response.json();
       setHungerScore(data.hunger_score);
       setStreak(data.streak || 0);
@@ -223,13 +219,13 @@ const Dashboard = () => {
     if (!meal.trim()) return;
     setLoading(true);
     try {
-      // Fetch nutritional info for the meal
+      // 1. Fetch nutritional info for the meal
       const nutritionResponse = await fetch(
-        `http://192.168.1.2:550/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
+        `http://192.168.1.4:550/nutrition/getnutritioninfo?meal_name=${encodeURIComponent(meal)}`
       );
       const nutritionData = await nutritionResponse.json();
   
-      // Prepare new meal entry; assume the POST API returns the unique _id
+      // 2. Prepare new meal entry; assume the POST API returns the unique _id
       const newMealEntry = {
         meal_name: nutritionData.meal_name,
         meal_id: nutritionData._id,
@@ -240,34 +236,33 @@ const Dashboard = () => {
         timestamp: new Date().toISOString()
       };
   
-      // Log the meal via POST API
-      const postResponse = await fetch("http://192.168.1.2:550/mealHistory/logMeal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMealEntry)
-      });
-      const postResult = await postResponse.json();
-      (newMealEntry as any)._id = postResult._id;
-      // Update meal history (UI shows only the 6 most recent)
-      setMealHistory(prev => [...prev, newMealEntry]);
-      setLastMealInfo(newMealEntry);
-      setModalVisible(true);
-      setMeal('');
-  
-      // Call leaderboard update API after logging the meal
-      await fetch(`http://192.168.1.2:550/leaderboard/update/${userId}`, {
+     // 3. Log the meal via POST API
+const postResponse = await fetch("http://192.168.1.4:550/mealHistory/logMeal", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(newMealEntry)
+});
+const postResult = await postResponse.json();
+const updatedMealEntry = { ...newMealEntry, _id: postResult._id };
+
+// 5. Now update the local meal history state after leaderboard update
+setMealHistory(prev => [...prev, updatedMealEntry]);
+setLastMealInfo(updatedMealEntry);
+setModalVisible(true);
+setMeal('');
+
+      // 6. Fetch updated leaderboard data
+      await fetch(`http://192.168.1.4:550/leaderboard/update/${userId}`, {
         method: 'POST'
       });
-  
-      // Re-fetch leaderboard data to update hunger health info
       await fetchLeaderboardData();
   
-      // Refresh suggestion after logging the meal
-      const suggestionResponse = await fetch(`http://192.168.1.2:550/suggestions/${userId}`);
+      // 7. Refresh suggestion after logging the meal
+      const suggestionResponse = await fetch(`http://192.168.1.4:550/suggestions/${userId}`);
       const suggestionData = await suggestionResponse.json();
       setSuggestion(suggestionData);
-
-      // Force AlertBox to re-render by updating its key
+  
+      // 8. Force AlertBox to re-render by updating its key
       setAlertBoxKey(prev => prev + 1);
   
     } catch (error) {
@@ -276,17 +271,17 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
+  
   // Updated deletion handler to update leaderboard data after deletion
   const handleDeleteMeal = async (_id: string) => {
     try {
-      await fetch(`http://192.168.1.2:550/mealHistory/deleteMeal/${_id}`, {
+      await fetch(`http://192.168.1.4:550/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMealHistory(prev => prev.filter(item => item._id !== _id));
       
       // Update leaderboard data after deletion:
-      await fetch(`http://192.168.1.2:550/leaderboard/update/${userId}`, {
+      await fetch(`http://192.168.1.4:550/leaderboard/update/${userId}`, {
         method: 'POST'
       });
       await fetchLeaderboardData();
@@ -381,17 +376,41 @@ const Dashboard = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.healthContainer}>
-            {[
-              { value: mealHistory.length.toString(), label: 'Meals Logged', color: '#3E885B', bg: '#EFF5F1' },
-              { value: parseFloat((hungerScore ?? 0).toString()).toFixed(2), label: 'Hunger Score', color: '#2E664A', bg: '#F0FDF4' },
-              { value: (streak ?? 0).toString(), label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
-            ].map((item, index) => (
-              <View key={index} style={[styles.healthItem, { backgroundColor: item.bg, marginHorizontal: 4 }]}>
-                <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>
-                <Text style={styles.healthLabel}>{item.label}</Text>
-              </View>
-            ))}
+  {[
+    { value: mealHistory.length.toString(), label: 'Meals Logged', color: '#3E885B', bg: '#EFF5F1' },
+    {
+      value: parseFloat((hungerScore ?? 0).toString()).toFixed(2),
+      label: 'Hunger Score',
+      color: '#2E664A',
+      bg: '#F0FDF4'
+    },
+    { value: (streak ?? 0).toString(), label: 'Day Streak', color: '#5E8C7B', bg: '#F6F9F7' },
+  ].map((item, index) => {
+    return (
+      <View key={index} style={{ flex: 1, marginHorizontal: 4 }}>
+        {item.label === 'Hunger Score' ? (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Leaderboard')}
+            style={{ flex: 1 }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.healthItem, { backgroundColor: item.bg }]}>
+              <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>
+              <Text style={styles.healthLabel}>{item.label}</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.healthItem, { backgroundColor: item.bg, flex: 1 }]}>
+            <Text style={[styles.healthValue, { color: item.color }]}>{item.value}</Text>
+            <Text style={styles.healthLabel}>{item.label}</Text>
           </View>
+        )}
+      </View>
+    );
+  })}
+</View>
+
+
         </View>
 
         {/* Illness Analysis Card with a Close Button */}
@@ -700,7 +719,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     flex: 1,
-    marginHorizontal: 4,
   },
   healthValue: {
     fontSize: 24,

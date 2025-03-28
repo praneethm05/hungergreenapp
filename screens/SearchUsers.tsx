@@ -33,7 +33,7 @@ export default function SearchUsers() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://192.168.1.2:550/users/');
+      const response = await fetch('http://192.168.1.4:550/users/');
       const data = await response.json();
       // Map the response data using user.user_id
       const mappedUsers = data.map((user: any) => ({

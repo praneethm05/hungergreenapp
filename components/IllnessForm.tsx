@@ -31,7 +31,7 @@ function RecordIllnessForm({onSubmitSuccess}) {
     }
     try {
       // Use the Clerk user id from "user"
-      const response = await fetch('http://192.168.1.2:550/illness/', {
+      const response = await fetch('http://192.168.1.4:550/illness/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

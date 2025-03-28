@@ -43,13 +43,13 @@ const AllMealsScreen: React.FC = () => {
   useEffect(() => {
     async function fetchMeals() {
       try {
-        const response = await fetch(`http://192.168.1.2:550/mealHistory/getMeals/${userId}`);
+        const response = await fetch(`http://192.168.1.4:550/mealHistory/getMeals/${userId}`);
         const data = await response.json();
         // Enrich each meal using the mealSearch API
         const enrichedMeals = await Promise.all(
           data.map(async (meal: any) => {
             try {
-              const res = await fetch(`http://192.168.1.2:550/mealSearch/getMeal/${meal.meal_id}`);
+              const res = await fetch(`http://192.168.1.4:550/mealSearch/getMeal/${meal.meal_id}`);
               const mealSearchData = await res.json();
               return {
                 ...meal,
@@ -112,7 +112,7 @@ const AllMealsScreen: React.FC = () => {
   const updateLeaderboard = async () => {
     try {
       // Call leaderboard update API
-      await fetch(`http://192.168.1.2:550/leaderboard/update/${userId}`, {
+      await fetch(`http://192.168.1.4:550/leaderboard/update/${userId}`, {
         method: 'POST'
       });
       // Optionally, you can call the leaderboard info endpoint here if you need to update UI elements.
@@ -125,7 +125,7 @@ const AllMealsScreen: React.FC = () => {
   const handleDeleteMeal = async (_id: string | number) => {
     try {
       // Update the URL to match the correct server IP and port.
-      await fetch(`http://192.168.1.2:550/mealHistory/deleteMeal/${_id}`, {
+      await fetch(`http://192.168.1.4:550/mealHistory/deleteMeal/${_id}`, {
         method: "DELETE"
       });
       setMeals(prev => prev.filter(item => item._id !== _id));

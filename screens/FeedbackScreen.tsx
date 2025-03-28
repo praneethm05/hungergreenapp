@@ -1,137 +1,275 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { MessageCircle, Send, ThumbsUp, MessagesSquare, Bot, X } from 'lucide-react-native';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, FC } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  Alert,
+  ActivityIndicator,
+  NativeSyntheticEvent,
+  TextInputSubmitEditingEventData,
+} from 'react-native';
+import {
+  MessageCircle,
+  Send,
+  ThumbsUp,
+  MessagesSquare,
+  Bot,
+  X,
+} from 'lucide-react-native';
+import { useUser } from '@clerk/clerk-expo';
 
-export default function FeedbackScreen() {
-  const [message, setMessage] = useState('');
-  const [showChatbot, setShowChatbot] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+type FeedbackType = 'reportissue' | 'suggestfeature';
 
-  // Dummy chat messages for demonstration
-  const [chatMessages] = useState([
-    { id: 1, text: "Hello! How can I help you today?", isBot: true },
-    { id: 2, text: "I'm having trouble with meal tracking", isBot: false },
-    { id: 3, text: "I understand. Let me guide you through the meal tracking process.", isBot: true },
+interface ChatMessage {
+  id: number;
+  text: string;
+  isBot: boolean;
+}
+
+const FeedbackScreen: FC = () => {
+  const { user } = useUser();
+
+  // Feedback states
+  const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+  const [selectedFeedbackType, setSelectedFeedbackType] = useState<FeedbackType | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState<boolean>(false);
+
+  // Chat states
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { id: 1, text: 'Hello! How can I help you today?', isBot: true },
   ]);
+  const [chatLoading, setChatLoading] = useState<boolean>(false);
+  const [showChatbot, setShowChatbot] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  const flatListRef = useRef<FlatList<ChatMessage>>(null);
 
   // Keyboard event listeners
   useEffect(() => {
-    const keyboardWillShow = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
+    const keyboardShowEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const keyboardHideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const keyboardShowListener = Keyboard.addListener(keyboardShowEvent, (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
     );
-    const keyboardWillHide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
-    );
+    const keyboardHideListener = Keyboard.addListener(keyboardHideEvent, () => setKeyboardHeight(0));
 
     return () => {
-      keyboardWillShow.remove();
-      keyboardWillHide.remove();
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
     };
   }, []);
 
-  const toggleChatbot = () => {
-    setShowChatbot(!showChatbot);
+  // Auto scroll to bottom when chat messages or keyboard height changes
+  useEffect(() => {
+    if (flatListRef.current && chatMessages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  }, [chatMessages, keyboardHeight]);
+
+  const toggleChatbot = (): void => {
+    setShowChatbot((prev) => !prev);
   };
 
+  // Handle feedback submission
+  const submitFeedback = async (): Promise<void> => {
+    if (!selectedFeedbackType) {
+      Alert.alert('Select Feedback Type', 'Please choose either Report Issue or Suggest Feature.');
+      return;
+    }
+    if (!feedbackMessage.trim()) {
+      Alert.alert('Empty Feedback', 'Please enter your feedback message.');
+      return;
+    }
+    setFeedbackLoading(true);
+    const payload = {
+      user_id: user?.id || 'unknown',
+      message: feedbackMessage,
+      type: selectedFeedbackType,
+    };
+
+    try {
+      const response = await fetch('http://192.168.1.4:550/feedback/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) {
+        Alert.alert('Feedback Sent', 'Thank you for your feedback!');
+        setFeedbackMessage('');
+        setSelectedFeedbackType(null);
+        Keyboard.dismiss();
+      } else {
+        Alert.alert('Error', 'Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Unable to send feedback. Please check your network connection.');
+    }
+    setFeedbackLoading(false);
+  };
+
+  // Handle sending a chat message
+  const handleSendChat = async (): Promise<void> => {
+    if (!chatInput.trim()) return;
+
+    // Add user message
+    const userMsg: ChatMessage = { id: Date.now(), text: chatInput, isBot: false };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const response = await fetch('http://192.168.1.4:550/feedback/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg.text, user_id: user?.id || 'unknown' }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const botMsg: ChatMessage = { id: Date.now() + 1, text: data.response, isBot: true };
+        setChatMessages((prev) => [...prev, botMsg]);
+      } else {
+        Alert.alert('Error', 'Chat service error');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Unable to send chat message. Check network connection.');
+    }
+    setChatLoading(false);
+  };
+
+  const onChatSubmit = (e: NativeSyntheticEvent<TextInputSubmitEditingEventData>): void => {
+    handleSendChat();
+  };
+
+  // Render each chat message
+  const renderChatMessage = ({ item }: { item: ChatMessage }) => (
+    <View
+      style={[
+        styles.messageContainer,
+        item.isBot ? styles.botMessage : styles.userMessage,
+      ]}
+    >
+      <Text style={[styles.messageText, item.isBot ? styles.botMessageText : styles.userMessageText]}>
+        {item.text}
+      </Text>
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
         style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView 
-          style={styles.scrollView} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {!showChatbot ? (
-            // Feedback Section
-            <View style={styles.feedbackSection}>
-              {/* Chatbot Toggle */}
-              <TouchableOpacity onPress={toggleChatbot} style={styles.chatbotToggle}>
-                <Bot size={24} color="#64748b" />
-                <Text style={styles.chatbotText}>Need immediate help? Chat with us</Text>
-              </TouchableOpacity>
-
-              <View style={styles.welcomeCard}>
-                <ThumbsUp size={32} color="#16A34A" style={styles.welcomeIcon} />
-                <Text style={styles.welcomeTitle}>We'd love to hear from you!</Text>
-                <Text style={styles.welcomeText}>
-                  Your feedback helps us improve our service and provide you with a better experience.
-                </Text>
-              </View>
-
-              {/* Quick Actions */}
-              <View style={styles.quickActions}>
-                <TouchableOpacity style={styles.actionCard}>
-                  <MessagesSquare size={24} color="#16A34A" />
-                  <Text style={styles.actionTitle}>Report Issue</Text>
+        <FlatList
+          renderItem={() => null}
+          data={[]}
+          // Use FlatList's ListHeaderComponent to switch between feedback and chat UI
+          ListHeaderComponent={
+            !showChatbot ? (
+              <View style={styles.feedbackSection}>
+                {/* Chatbot Toggle */}
+                <TouchableOpacity onPress={toggleChatbot} style={styles.chatbotToggle}>
+                  <Bot size={24} color="#64748b" />
+                  <Text style={styles.chatbotText}>Need immediate help? Chat with us</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard}>
-                  <MessageCircle size={24} color="#16A34A" />
-                  <Text style={styles.actionTitle}>Suggest Feature</Text>
-                </TouchableOpacity>
-              </View>
 
-              {/* Feedback Form */}
-              <View style={styles.feedbackForm}>
-                <Text style={styles.formLabel}>Share your thoughts</Text>
-                <TextInput
-                  style={styles.textArea}
-                  multiline
-                  numberOfLines={6}
-                  placeholder="Type your feedback here..."
-                  placeholderTextColor="#94a3b8"
-                  textAlignVertical="top"
-                />
-                <TouchableOpacity 
-                  style={styles.submitButton}
-                  onPress={() => Keyboard.dismiss()}
-                >
-                  <Text style={styles.submitButtonText}>Submit Feedback</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            // Chatbot Interface
-            <View style={[styles.chatSection, { paddingBottom: keyboardHeight }]}>
-              {/* Chat Header */}
-              <View style={styles.chatHeader}>
-                <View style={styles.chatHeaderContent}>
-                  <Bot size={24} color="#16A34A" />
-                  <Text style={styles.chatHeaderText}>Chat Support</Text>
-                </View>
-                <TouchableOpacity 
-                  onPress={() => setShowChatbot(false)} 
-                  style={styles.closeButton}
-                >
-                  <X size={24} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Chat Messages */}
-              {chatMessages.map((msg) => (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.messageContainer,
-                    msg.isBot ? styles.botMessage : styles.userMessage,
-                  ]}
-                >
-                  <Text style={[
-                    styles.messageText,
-                    msg.isBot ? styles.botMessageText : styles.userMessageText
-                  ]}>
-                    {msg.text}
+                <View style={styles.welcomeCard}>
+                  <ThumbsUp size={32} color="#16A34A" style={styles.welcomeIcon} />
+                  <Text style={styles.welcomeTitle}>We'd love to hear from you!</Text>
+                  <Text style={styles.welcomeText}>
+                    Your feedback helps us improve our service and provide you with a better experience.
                   </Text>
                 </View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
+
+                {/* Quick Actions */}
+                <View style={styles.quickActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionCard,
+                      selectedFeedbackType === 'reportissue' && styles.selectedAction,
+                    ]}
+                    onPress={() => setSelectedFeedbackType('reportissue')}
+                  >
+                    <MessagesSquare size={24} color="#16A34A" />
+                    <Text style={styles.actionTitle}>Report Issue</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionCard,
+                      selectedFeedbackType === 'suggestfeature' && styles.selectedAction,
+                    ]}
+                    onPress={() => setSelectedFeedbackType('suggestfeature')}
+                  >
+                    <MessageCircle size={24} color="#16A34A" />
+                    <Text style={styles.actionTitle}>Suggest Feature</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Feedback Form */}
+                <View style={styles.feedbackForm}>
+                  <Text style={styles.formLabel}>Share your thoughts</Text>
+                  <TextInput
+                    style={styles.textArea}
+                    multiline
+                    numberOfLines={6}
+                    placeholder="Type your feedback here..."
+                    placeholderTextColor="#94a3b8"
+                    textAlignVertical="top"
+                    value={feedbackMessage}
+                    onChangeText={setFeedbackMessage}
+                  />
+                  <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={submitFeedback}
+                    disabled={feedbackLoading}
+                  >
+                    {feedbackLoading ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>Submit Feedback</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.chatSection}>
+                {/* Chat Header */}
+                <View style={styles.chatHeader}>
+                  <View style={styles.chatHeaderContent}>
+                    <Bot size={24} color="#16A34A" />
+                    <Text style={styles.chatHeaderText}>Chat Support</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowChatbot(false)} style={styles.closeButton}>
+                    <X size={24} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Chat Messages List */}
+                <FlatList
+                  ref={flatListRef}
+                  data={chatMessages}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderChatMessage}
+                  contentContainerStyle={styles.chatMessagesContainer}
+                />
+              </View>
+            )
+          }
+          // Empty footer so that FlatList can scroll properly
+          ListFooterComponent={<View style={{ height: keyboardHeight + 24 }} />}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        />
 
         {/* Chat Input - Only shown in chatbot mode */}
         {showChatbot && (
@@ -140,18 +278,20 @@ export default function FeedbackScreen() {
               style={styles.chatInput}
               placeholder="Type a message..."
               placeholderTextColor="#94a3b8"
-              value={message}
-              onChangeText={setMessage}
+              value={chatInput}
+              onChangeText={setChatInput}
+              onSubmitEditing={onChatSubmit}
+              returnKeyType="send"
             />
-            <TouchableOpacity style={styles.sendButton}>
-              <Send size={20} color="white" />
+            <TouchableOpacity style={styles.sendButton} onPress={handleSendChat} disabled={chatLoading}>
+              {chatLoading ? <ActivityIndicator color="white" /> : <Send size={20} color="white" />}
             </TouchableOpacity>
           </View>
         )}
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -161,14 +301,12 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   feedbackSection: {
-    padding: 16,
+    flex: 1,
   },
   chatbotToggle: {
     flexDirection: 'row',
@@ -235,6 +373,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  selectedAction: {
+    backgroundColor: '#e0f2f1',
+  },
   actionTitle: {
     marginTop: 12,
     fontSize: 16,
@@ -278,7 +419,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chatSection: {
-    padding: 16,
     flex: 1,
   },
   chatHeader: {
@@ -304,6 +444,9 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#f8fafc',
+  },
+  chatMessagesContainer: {
+    paddingBottom: 16,
   },
   messageContainer: {
     maxWidth: '80%',
@@ -360,3 +503,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+export default FeedbackScreen;

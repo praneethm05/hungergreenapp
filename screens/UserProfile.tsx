@@ -37,7 +37,7 @@ export default function UserProfile() {
   // Fetch user details with friend check
   useEffect(() => {
     if (userId) {
-      fetch(`http://192.168.1.2:550/users/${userId}`)
+      fetch(`http://192.168.1.4:550/users/${userId}`)
         .then(response => response.json())
         .then(data => {
           console.log("User data:", data); // Log user data
@@ -56,7 +56,7 @@ export default function UserProfile() {
   // Fetch leaderboard info (streak and hunger_score)
   useEffect(() => {
     if (userId) {
-      fetch(`http://192.168.1.2:550/leaderboard/info/${userId}`)
+      fetch(`http://192.168.1.4:550/leaderboard/info/${userId}`)
         .then(response => response.json())
         .then(data => {
           console.log("Leaderboard info:", data); // Log leaderboard info
@@ -72,7 +72,7 @@ export default function UserProfile() {
       const endpoint = isFriend ? 'delete' : 'add'; // Use 'delete' for removing
       const method = isFriend ? 'DELETE' : 'POST';
       
-      const response = await fetch(`http://192.168.1.2:550/user/circle/${endpoint}`, {
+      const response = await fetch(`http://192.168.1.4:550/user/circle/${endpoint}`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   headerBackground: {
-    height: 240,
+    height: 340,
   },
   headerBackgroundImage: {
     opacity: 0.7,
@@ -236,6 +236,7 @@ const styles = StyleSheet.create({
     padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    
   },
   avatar: {
     width: 102,
@@ -256,18 +257,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ddf0e8',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Book' : 'sans-serif',
-    marginBottom: 6,
+    marginBottom: 3,
   },
   userSince: {
     fontSize: 14,
     color: '#ddf0e8',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Medium' : 'sans-serif-medium',
     opacity: 0.8,
+    marginBottom: 10,
   },
   statsOuterContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: -40,
+    marginTop: 20,
   },
   statsContainer: {
     flexDirection: 'row',
