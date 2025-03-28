@@ -16,6 +16,7 @@ import {
 import { User, Settings, Edit2, Camera, Utensils, AlertTriangle, LogOut } from 'lucide-react-native';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { func } from 'prop-types';
 
 const { width } = Dimensions.get('window');
 
@@ -267,6 +268,7 @@ export default function ProfileSettings() {
         .catch(err => console.error("Error fetching leaderboard info: ", err));
     }
   }, [user]);
+
 
   const menuItems = [
     { title: 'Change Name', icon: <Edit2 size={20} color="#2E664A" />, danger: false },
