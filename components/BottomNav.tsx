@@ -48,7 +48,6 @@ const BottomNav = () => {
       <Tab.Screen name="Home" component={Dashboard} />
       <Tab.Screen name="Feedback" component={FeedbackScreen} />
       <Tab.Screen name="Circle" component={SearchUsers} />
- 
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

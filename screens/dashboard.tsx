@@ -8,7 +8,8 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
 import MealDetailsModal from '../components/MealDetailsModal';
 import ReanimatedSwipeable from 'react-native-gesture-handler/Swipeable';
@@ -18,6 +19,7 @@ import { IllnessCauseCard } from '../components/IllnessBox';
 import { AlertBox } from '../components/alertBox';
 import { RecordIllnessForm } from '../components/IllnessForm';
 import { useUser } from "@clerk/clerk-expo";
+import { Circle } from 'react-native-svg';
 
 const Dashboard = () => {
   const navigation = useNavigation<any>();
@@ -35,7 +37,7 @@ const Dashboard = () => {
   // New state for illness analysis data and its visibility
   const [illnessData, setIllnessData] = useState<any>(null);
   const [showIllnessCard, setShowIllnessCard] = useState<boolean>(false);
-  const [circleFriends, setCircleFriends] = useState<Array<{ id: string, name: string }>>([]);
+  const [circleFriends, setCircleFriends] = useState<Array<{ id: string, name: string,avatar: string | null }>>([]);
 
   const { user } = useUser();
   const userId = user?.id;
@@ -51,11 +53,12 @@ const Dashboard = () => {
       const userResponse = await fetch(`http://192.168.1.4:550/users/${userId}`);
       const userData = await userResponse.json();
       const friendIds = userData.circle || [];
+     
 
       const friendDetailsPromises = friendIds.map(async (friendId: string) => {
         const friendResponse = await fetch(`http://192.168.1.4:550/users/${friendId}`);
         const friendData = await friendResponse.json();
-        return { id: friendId, name: friendData.name };
+        return { id: friendId, name: friendData.name ,avatar: friendData.profile_picture };
       });
 
       const friends = await Promise.all(friendDetailsPromises);
@@ -342,11 +345,16 @@ setMeal('');
               <Text style={styles.seeAll}>See Leaderboard</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.circleScrollView}>
             {circleFriends.map((friend) => (
               <View key={friend.id} style={styles.circleItem}>
-                <TouchableOpacity style={styles.avatar}>
-                  <User size={22} color="#5E8C7B" strokeWidth={2} />
+                <TouchableOpacity >
+                        <Image 
+                                                      source={{ 
+                                                        uri: friend.avatar ,
+                                                      }}
+                                                      style={styles.avatar}
+                                                    />
                 </TouchableOpacity>
                 <Text style={styles.circleName}>{friend.name}</Text>
               </View>
@@ -612,11 +620,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 12,
   },
+  circleScrollView:{
+paddingTop:9,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   title: {
     fontSize: 18,
@@ -659,6 +670,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
+    borderWidth:1,
+    borderColor:'#E2E8F0',
     shadowRadius: 4,
     elevation: 2,
   },

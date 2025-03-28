@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Platform ,Image} from 'react-native';
 import { Search, User } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -105,7 +105,13 @@ export default function SearchUsers() {
             activeOpacity={0.7}
           >
             <View style={styles.avatar}>
-              <User size={22} color="#64748b" strokeWidth={2} />
+              {/* <User size={22} color="#64748b" strokeWidth={2} /> */}
+               <Image 
+                                    source={{ 
+                                      uri: user.avatar,
+                                    }}
+                                    style={styles.avatar}
+                                  />
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{user.name}</Text>
@@ -136,6 +142,12 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     marginBottom: 16,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -170,14 +182,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#f8fafc',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+ 
   userInfo: {
     marginLeft: 12,
   },
