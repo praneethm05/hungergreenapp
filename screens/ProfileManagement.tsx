@@ -326,7 +326,7 @@ export default function ProfileSettings() {
               </View>
               <Text style={styles.name}>{profileData ? profileData.name : 'Loading...'}</Text>
               <Text style={styles.username}>{profileData ? profileData.username : ''}</Text>
-              <Text style={styles.userSince}>Member since {profileData ? profileData.since || '2024' : ''}</Text>
+              <Text style={styles.userSince}>Member since {profileData ? profileData.since || '2025' : ''}</Text>
             </View>
           </LinearGradient>
         </ImageBackground>

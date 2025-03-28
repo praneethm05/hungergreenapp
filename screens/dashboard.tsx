@@ -338,8 +338,8 @@ setMeal('');
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text style={styles.title}>Your Circle</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAll}>See all</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Leaderboard')} style={styles.seeAllButton}>
+              <Text style={styles.seeAll}>See Leaderboard</Text>
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>

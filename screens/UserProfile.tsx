@@ -143,7 +143,7 @@ export default function UserProfile() {
                 {profileData ? profileData.username : ''}
               </Text>
               <Text style={styles.userSince}>
-                Member since {profileData ? profileData.since || '2024' : ''}
+                Member since {profileData ? profileData.since || '2025' : ''}
               </Text>
             </View>
           </LinearGradient>
@@ -168,7 +168,7 @@ export default function UserProfile() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.scoreText}>{hungerScore}</Text>
+                <Text style={styles.scoreText}>{typeof hungerScore === 'number' ? hungerScore.toFixed(0) : '0'}</Text>
               </LinearGradient>
               <Text style={styles.statLabel}>Hunger Score</Text>
             </View>
@@ -323,6 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-medium',
+    textAlign: 'center',
   },
   addCircleButton: {
     backgroundColor: '#2E664A',
